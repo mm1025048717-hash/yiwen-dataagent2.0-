@@ -11,11 +11,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// 静态文件服务 - 必须在路由之前
-app.use(express.static(__dirname, {
-  maxAge: '1d',
-  etag: true
-}));
+// 静态文件服务 - 必须在所有路由之前
+app.use(express.static(__dirname));
 
 // DeepSeek API配置
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-e8312e0eae874f2f9122f6aa334f4b3f';
@@ -244,11 +241,7 @@ app.get('/api/health', (req, res) => {
 // 静态文件服务会自动处理 CSS/JS 等文件
 
 // 提供前端页面（放在最后，作为 fallback）
-app.get('*', (req, res) => {
-  // 如果是静态文件请求，让 express.static 处理
-  if (req.path.match(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/)) {
-    return res.status(404).send('File not found');
-  }
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
