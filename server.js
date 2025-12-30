@@ -12,21 +12,34 @@ app.use(cors());
 app.use(express.json());
 
 // 静态文件服务 - 必须在所有路由之前
-// 在 Vercel 上，使用 process.cwd() 获取项目根目录
+// 在 Vercel 上，文件在项目根目录
 const staticPath = process.env.VERCEL ? process.cwd() : __dirname;
 
-// 先处理静态文件
+// 明确处理静态文件路由，避免被其他路由拦截
+app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, res) => {
+  const filePath = path.join(staticPath, req.path);
+  const ext = path.extname(req.path).toLowerCase();
+  
+  // 设置正确的 MIME 类型
+  if (ext === '.css') {
+    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+  } else if (ext === '.js') {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  }
+  
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Static file error:', req.path, err.message);
+      res.status(404).send('File not found');
+    }
+  });
+});
+
+// 通用静态文件服务（作为后备）
 app.use(express.static(staticPath, {
   dotfiles: 'ignore',
   etag: true,
-  maxAge: '1d',
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css; charset=utf-8');
-    } else if (filePath.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    }
-  }
+  maxAge: '1d'
 }));
 
 // DeepSeek API配置
