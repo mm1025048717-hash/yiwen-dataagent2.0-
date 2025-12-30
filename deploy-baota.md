@@ -1,6 +1,42 @@
 # 宝塔面板部署指南
 
-## 部署步骤
+## 🚀 快速自动部署（推荐）
+
+### 方式一：使用 Python 脚本（推荐）
+
+**Windows 用户：**
+1. 双击运行 `deploy-simple.bat`
+2. 按提示输入 SSH 密码和宝塔 API 密钥
+3. 等待部署完成
+
+**手动运行：**
+```bash
+# 安装依赖（首次运行）
+pip install requests paramiko scp
+
+# 运行部署脚本
+python deploy-auto.py
+```
+
+### 方式二：使用 Bash 脚本（Linux/Mac/服务器）
+
+```bash
+# 在服务器上直接运行
+bash deploy-baota.sh
+```
+
+### 获取宝塔 API 密钥
+
+1. 登录宝塔面板：http://47.94.146.148:8888
+2. 进入 **面板设置** → **API接口**
+3. 点击 **开启 API** 并设置 IP 白名单
+4. 复制 **API Key** 和 **API Token**
+
+---
+
+## 📝 手动部署步骤
+
+如果自动部署失败，可以按照以下步骤手动部署：
 
 ### 1. 在宝塔面板创建 Node.js 项目
 

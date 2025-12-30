@@ -50,30 +50,20 @@ npm run dev
 
 打开浏览器访问：http://localhost:3000
 
-### 在线部署（推荐）
+### 在线部署
 
-#### 🚀 GitHub Actions 全自动部署
+#### 🚀 宝塔面板一键部署
 
-配置一次后，每次推送代码都会自动部署！
+**Windows 用户（最简单）：**
+1. 双击运行 `deploy-simple.bat`
+2. 按提示输入 SSH 密码和宝塔 API 密钥
+3. 等待部署完成
 
-**快速开始**：查看 [SETUP.md](./SETUP.md) - 5分钟完成部署
+**详细部署指南：** 查看 [宝塔面板部署指南](./deploy-baota.md)
 
-**详细说明**：
-- [完整部署指南](./DEPLOY.md)
-- [GitHub Actions 设置指南](.github/workflows/setup-vercel.md)
-
-#### 部署后获取访问链接
-
-部署完成后，你会获得一个类似这样的链接：
-```
-https://your-project-name.vercel.app
-```
-
-✅ 这个链接可以：
-- 直接访问应用
-- 分享给他人进行演示
-- 支持 HTTPS（自动配置）
-- 全球 CDN 加速
+**部署后访问：**
+- http://dataagent.47.94.146.148
+- 或 http://47.94.146.148:3000
 
 ## API接口说明
 

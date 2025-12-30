@@ -275,9 +275,14 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(staticPath, 'index.html'));
 });
 
-// 启动服务器
-app.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
-  console.log(`DeepSeek API Key: ${DEEPSEEK_API_KEY ? '已配置' : '未配置'}`);
-});
+// 启动服务器（仅在非 Vercel 环境下）
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`服务器运行在 http://localhost:${PORT}`);
+    console.log(`DeepSeek API Key: ${DEEPSEEK_API_KEY ? '已配置' : '未配置'}`);
+  });
+}
+
+// 导出 app 供 Vercel 使用
+module.exports = app;
 
