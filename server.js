@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -12,11 +13,35 @@ app.use(cors());
 app.use(express.json());
 
 // 静态文件服务 - 必须在所有路由之前
-// 在 Vercel 上，文件在项目根目录
-const staticPath = process.env.VERCEL ? process.cwd() : __dirname;
+// 在 Vercel 上，需要正确设置静态文件路径
+let staticPath = __dirname;
+
+if (process.env.VERCEL) {
+  // 在 Vercel 上，尝试多个可能的路径
+  // Vercel 的 Serverless Functions 中，文件可能在 /var/task 或项目根目录
+  const possiblePaths = [
+    path.join(process.cwd(), '..'), // 项目根目录（如果 server.js 在子目录）
+    process.cwd(), // 当前工作目录
+    __dirname, // server.js 所在目录
+    path.resolve(__dirname, '..') // 上一级目录
+  ];
+  
+  // 检查哪个路径存在且包含 index.html
+  for (const testPath of possiblePaths) {
+    const testFile = path.join(testPath, 'index.html');
+    try {
+      if (fs.existsSync(testFile)) {
+        staticPath = testPath;
+        break;
+      }
+    } catch (e) {
+      // 继续尝试下一个路径
+    }
+  }
+}
 
 // 明确处理静态文件路由，避免被其他路由拦截
-app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, res) => {
+app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (req, res) => {
   const filePath = path.join(staticPath, req.path);
   const ext = path.extname(req.path).toLowerCase();
   
@@ -25,11 +50,13 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, re
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
   } else if (ext === '.js') {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  } else if (ext === '.html') {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
   }
   
   res.sendFile(filePath, (err) => {
     if (err) {
-      console.error('Static file error:', req.path, err.message);
+      console.error('Static file error:', req.path, err.message, 'Tried path:', filePath);
       res.status(404).send('File not found');
     }
   });
