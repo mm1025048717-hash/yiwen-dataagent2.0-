@@ -12,7 +12,23 @@ app.use(cors());
 app.use(express.json());
 
 // 静态文件服务 - 必须在所有路由之前
-app.use(express.static(__dirname));
+// 在 Vercel 上，__dirname 指向函数目录，需要确保路径正确
+const staticPath = process.env.VERCEL ? path.join(process.cwd(), '.') : __dirname;
+app.use(express.static(staticPath, {
+  dotfiles: 'ignore',
+  etag: true,
+  extensions: ['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg'],
+  index: false,
+  maxAge: '1d',
+  redirect: false,
+  setHeaders: (res, path) => {
+    if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    } else if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+  }
+}));
 
 // DeepSeek API配置
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-e8312e0eae874f2f9122f6aa334f4b3f';
