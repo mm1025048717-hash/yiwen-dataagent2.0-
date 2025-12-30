@@ -12,20 +12,19 @@ app.use(cors());
 app.use(express.json());
 
 // 静态文件服务 - 必须在所有路由之前
-// 在 Vercel 上，__dirname 指向函数目录，需要确保路径正确
-const staticPath = process.env.VERCEL ? path.join(process.cwd(), '.') : __dirname;
+// 在 Vercel 上，使用 process.cwd() 获取项目根目录
+const staticPath = process.env.VERCEL ? process.cwd() : __dirname;
+
+// 先处理静态文件
 app.use(express.static(staticPath, {
   dotfiles: 'ignore',
   etag: true,
-  extensions: ['html', 'css', 'js', 'json', 'png', 'jpg', 'jpeg', 'gif', 'svg'],
-  index: false,
   maxAge: '1d',
-  redirect: false,
-  setHeaders: (res, path) => {
-    if (path.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    } else if (path.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    } else if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     }
   }
 }));
@@ -257,8 +256,10 @@ app.get('/api/health', (req, res) => {
 // 静态文件服务会自动处理 CSS/JS 等文件
 
 // 提供前端页面（放在最后，作为 fallback）
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+app.get('*', (req, res) => {
+  // 如果是静态文件请求，让 express.static 处理（应该已经被处理了）
+  // 如果到这里，说明是页面请求
+  res.sendFile(path.join(staticPath, 'index.html'));
 });
 
 // 启动服务器
