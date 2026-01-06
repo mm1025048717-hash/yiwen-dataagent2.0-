@@ -58,7 +58,6 @@ if (process.env.VERCEL) {
 app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (req, res) => {
   // 移除路径开头的斜杠（如果有）
   const cleanPath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
-  const filePath = path.join(staticPath, cleanPath);
   const ext = path.extname(req.path).toLowerCase();
   
   // 设置正确的 MIME 类型
@@ -70,31 +69,31 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (re
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
   }
   
-  // 检查文件是否存在
-  if (!fs.existsSync(filePath)) {
-    console.error('❌ File not found:', req.path, 'at', filePath);
-    // 尝试多个可能的路径
-    const altPaths = [
-      path.join(__dirname, cleanPath),
-      path.join(process.cwd(), cleanPath),
-      path.join('/var/task', cleanPath),
-    ];
-    
-    let found = false;
-    for (const altPath of altPaths) {
-      if (fs.existsSync(altPath)) {
-        console.log('✅ Found file at alternative path:', altPath);
-        res.sendFile(altPath);
-        found = true;
+  // 尝试多个可能的路径
+  const possiblePaths = [
+    path.join(staticPath, cleanPath),
+    path.join(__dirname, cleanPath),
+    path.join(process.cwd(), cleanPath),
+    path.join('/var/task', cleanPath),
+  ];
+  
+  let fileFound = false;
+  for (const filePath of possiblePaths) {
+    try {
+      if (fs.existsSync(filePath)) {
+        console.log('✅ Serving file:', req.path, 'from', filePath);
+        res.sendFile(filePath);
+        fileFound = true;
         break;
       }
+    } catch (e) {
+      // 继续尝试下一个路径
     }
-    
-    if (!found) {
-      res.status(404).send('File not found: ' + req.path);
-    }
-  } else {
-    res.sendFile(filePath);
+  }
+  
+  if (!fileFound) {
+    console.error('❌ File not found:', req.path, 'tried paths:', possiblePaths);
+    res.status(404).json({ error: 'File not found', path: req.path });
   }
 });
 
