@@ -12,7 +12,13 @@
       "dest": "server.js"
     },
     {
-      "src": "/(.*)",
+      "src": "/(.*\\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html))",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/",
       "dest": "server.js"
     }
   ]
