@@ -4987,3 +4987,101 @@ function generateEmployeeFromNLP() {
         
     }, 2000);
 }
+
+// ========== 2.0 版本新增功能 ==========
+
+// 固定看板到主看板区域（路径一：构建阶段）
+function fixBoardToDashboard() {
+    showToast('success', '看板已固定到主看板区域');
+    // 切换到看板视图
+    switchView('dashboard');
+    // 隐藏固定按钮
+    document.getElementById('fix-to-dashboard-bar').classList.add('hidden');
+}
+
+// 显示固定到看板按钮（当生成看板预览时调用）
+function showFixToDashboardButton() {
+    const fixBar = document.getElementById('fix-to-dashboard-bar');
+    if (fixBar) {
+        fixBar.classList.remove('hidden');
+    }
+}
+
+// 打开智能归因分析弹窗
+function openSmartAttribution() {
+    const modal = document.getElementById('smart-attribution-modal');
+    if (modal) {
+        modal.classList.add('active');
+        // 重置结果
+        document.getElementById('attribution-result').style.display = 'none';
+    }
+}
+
+// 运行归因分析
+function runAttributionAnalysis() {
+    const metricSelect = document.getElementById('attribution-metric-select');
+    const selectedMetric = metricSelect ? metricSelect.value : 'revenue';
+    const resultDiv = document.getElementById('attribution-result');
+    
+    if (!resultDiv) return;
+    
+    // 显示加载状态
+    resultDiv.style.display = 'block';
+    resultDiv.querySelector('div').innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-circle-notch fa-spin" style="font-size: 24px; color: #3b82f6;"></i><div style="margin-top: 12px; color: #6b7280;">正在分析中...</div></div>';
+    
+    // 模拟分析过程
+    setTimeout(() => {
+        const metricNames = {
+            revenue: '本周营收',
+            retention: '用户留存',
+            queries: '总提问数',
+            response_time: '平均响应时间'
+        };
+        
+        resultDiv.querySelector('div').innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 16px; color: #111827;">${metricNames[selectedMetric]} 变化归因分析</div>
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">主要影响因素（按贡献度排序）</div>
+                <div style="background: #F9FAFB; border-radius: 6px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 13px;">华东区域销售增长</span>
+                        <span style="font-weight: 600; color: #10b981;">+45%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 13px;">新用户激活率提升</span>
+                        <span style="font-weight: 600; color: #10b981;">+28%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 13px;">促销活动效果</span>
+                        <span style="font-weight: 600; color: #10b981;">+15%</span>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">异常值识别</div>
+                <div style="background: #FEF3C7; border-left: 3px solid #F59E0B; padding: 12px; border-radius: 4px;">
+                    <div style="font-size: 13px; color: #92400E;">
+                        <i class="fas fa-exclamation-triangle" style="margin-right: 6px;"></i>
+                        11月15日出现异常峰值，可能与系统活动或数据同步有关
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">建议关注</div>
+                <div style="font-size: 13px; color: #374151; line-height: 1.6;">
+                    • 华东区域表现突出，建议深入分析成功经验<br>
+                    • 新用户激活率持续提升，可考虑扩大推广范围<br>
+                    • 建议持续监控异常值，确保数据质量
+                </div>
+            </div>
+        `;
+    }, 2000);
+}
+
+// 关闭弹窗（通用函数）
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}

@@ -98,6 +98,9 @@
                                         <button class="hero-pill">本月</button>
                                         <button class="hero-pill">季度</button>
                                     </div>
+                                    <button class="p-button" style="background: #8B5CF6; border-color: #8B5CF6; margin-right: 8px;" onclick="openSmartAttribution()" title="智能归因分析">
+                                        <i class="fas fa-lightbulb"></i> 智能归因
+                                    </button>
                                     <button class="p-button hero-download"><i class="fas fa-download"></i> 导出周报</button>
                                 </div>
                             </div>
@@ -245,34 +248,52 @@
                             </div>
                         </div>
 
-                        <!-- Right Panel: AI Agent -->
+                        <!-- Right Panel: AI Agent (路径二：看板编辑阶段) -->
                         <div class="dashboard-right-panel">
                             <div class="agent-header">
                                 <div class="agent-header-info">
                                     <i class="fas fa-robot"></i>
-                                    <span style="font-weight: 600;">AI Data Agent</span>
+                                    <span style="font-weight: 600;">数字员工 · 看板编辑助手</span>
                                 </div>
                                 <div class="status-dot online"></div>
                             </div>
+                            
+                            <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 12px; color: #0369A1;">
+                                <i class="fas fa-info-circle" style="margin-right: 6px;"></i>
+                                <strong>编辑模式：</strong>直接对当前看板进行增、删、改、查操作，所见即所得。
+                            </div>
 
                             <div class="agent-prompts">
-                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('总结本周销售亮点')"><i class="fas fa-star"></i> 洞察亮点</div>
-                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('对比华东和华南收入表现')"><i class="fas fa-code-branch"></i> 区域对比</div>
-                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('生成库存风险预警')"><i class="fas fa-triangle-exclamation"></i> 风险预警</div>
-                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('推荐下一步运营动作')"><i class="fas fa-magic"></i> 运营建议</div>
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('在下面添加一个本月用户留存率的趋势图')" title="增：添加图表">
+                                    <i class="fas fa-plus-circle"></i> 添加图表
+                                </div>
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('将柱状图按销售额从高到低排序')" title="改：修改图表">
+                                    <i class="fas fa-edit"></i> 修改图表
+                                </div>
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('这个峰值对应的具体数据是多少')" title="查：查询数据">
+                                    <i class="fas fa-search"></i> 查询数据
+                                </div>
+                                <div class="prompt-chip" onclick="sendDashboardQuickPrompt('去掉这个饼图')" title="删：删除图表">
+                                    <i class="fas fa-trash"></i> 删除图表
+                                </div>
                             </div>
 
                             <div class="chat-messages" id="dashboard-chat-messages">
                                 <div class="chat-message-row">
                                     <div class="message-avatar"><i class="fas fa-robot"></i></div>
                                     <div class="message-bubble">
-                                        Hi! I'm monitoring your data. <br>How can I help you analyze the dashboard?
+                                        我是您的看板编辑助手！<br>
+                                        可以直接用自然语言对当前看板进行编辑：<br>
+                                        • <strong>增</strong>：添加新的图表或指标<br>
+                                        • <strong>删</strong>：删除不需要的图表<br>
+                                        • <strong>改</strong>：修改图表类型、排序、维度等<br>
+                                        • <strong>查</strong>：查询具体数据值
                                     </div>
                                 </div>
                             </div>
 
                             <div class="chat-input-wrapper dashboard-chat-input">
-                                <input type="text" class="p-inputtext" id="dashboard-chat-input" placeholder="Ask about dashboard data..." onkeypress="handleDashboardChatEnter(event)">
+                                <input type="text" class="p-inputtext" id="dashboard-chat-input" placeholder="例如：按产品线细分一下销售额..." onkeypress="handleDashboardChatEnter(event)">
                                 <button class="p-button" onclick="sendDashboardChat()"><i class="fas fa-paper-plane"></i></button>
                             </div>
                         </div>
@@ -395,6 +416,10 @@
                             <div class="chat-sidebar-header">
                                 <button class="sidebar-new-btn" onclick="startNewChat()">新建对话</button>
                             </div>
+                            <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 10px; margin: 12px; font-size: 12px; color: #166534;">
+                                <i class="fas fa-lightbulb" style="margin-right: 6px;"></i>
+                                <strong>构建模式：</strong>通过问答从无到有创建看板，生成后可固定到主看板区域。
+                            </div>
                             <div class="sidebar-group">
                                 <div class="sidebar-group-title">最近历史</div>
                                 <div class="chat-list-item active" onclick="switchChat(this)">
@@ -440,6 +465,16 @@
                             <!-- Chat Messages Section (hidden initially) -->
                             <div class="chat-messages-container hidden" id="chat-messages-container">
                                 <div class="chat-messages" id="chat-messages"></div>
+                                <!-- Fixed to Dashboard Button (shown when board preview is generated) -->
+                                <div id="fix-to-dashboard-bar" class="hidden" style="position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -2px 8px rgba(0,0,0,0.05);">
+                                    <div style="font-size: 13px; color: #6b7280;">
+                                        <i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i>
+                                        看板预览已生成
+                                    </div>
+                                    <button class="p-button" onclick="fixBoardToDashboard()" style="background: #3b82f6;">
+                                        <i class="fas fa-thumbtack"></i> 固定到看板
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Chat Input Section -->
@@ -1320,6 +1355,74 @@
                     <input type="text" class="p-inputtext" id="llm-test-input" placeholder="请输入测试问题..." onkeypress="handleLlmTestEnter(event)">
                     <button class="p-button" onclick="sendLlmTestMessage()"><i class="fas fa-paper-plane"></i></button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Attribution Modal -->
+    <div class="drawer-overlay" id="smart-attribution-modal" style="justify-content: center; align-items: center;">
+        <div class="card" style="width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div class="drawer-header">
+                <div>
+                    <div style="font-weight: 600; font-size: 18px;">智能归因分析</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">快速分析关键指标变化的原因</div>
+                </div>
+                <i class="fas fa-times" style="cursor: pointer;" onclick="closeModal('smart-attribution-modal')"></i>
+            </div>
+            <div class="drawer-body" style="padding: 24px; overflow-y: auto;">
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">选择要分析的指标</label>
+                    <select class="p-inputtext" id="attribution-metric-select" style="width: 100%;">
+                        <option value="revenue">本周营收（提升 29%）</option>
+                        <option value="retention">用户留存（提升 6%）</option>
+                        <option value="queries">总提问数（+12%）</option>
+                        <option value="response_time">平均响应时间（-0.5s）</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">分析维度</label>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" checked style="margin-right: 6px;"> 时间维度
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" checked style="margin-right: 6px;"> 区域维度
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" checked style="margin-right: 6px;"> 产品维度
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 6px;"> 渠道维度
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="background: #F9FAFB; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 8px; color: #111827;">分析说明</div>
+                    <div style="font-size: 13px; color: #6B7280; line-height: 1.6;">
+                        智能归因分析将自动识别影响指标变化的关键因素，包括：
+                        <ul style="margin: 8px 0 0 20px; padding: 0;">
+                            <li>各维度贡献度分析</li>
+                            <li>异常值识别与解释</li>
+                            <li>趋势变化归因</li>
+                            <li>关联指标影响分析</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div id="attribution-result" style="display: none;">
+                    <div style="font-weight: 600; margin-bottom: 12px;">分析结果</div>
+                    <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button class="p-button p-button-outlined" onclick="closeModal('smart-attribution-modal')">取消</button>
+                <button class="p-button" onclick="runAttributionAnalysis()">
+                    <i class="fas fa-lightbulb"></i> 开始分析
+                </button>
             </div>
         </div>
     </div>
