@@ -349,18 +349,24 @@
                             <div style="display: flex; gap: 12px; align-items: flex-start;">
                                 <i class="fas fa-magic" style="color: #16A34A; margin-top: 2px; font-size: 18px;"></i>
                                 <div style="flex: 1;">
-                                    <div style="font-weight: 600; color: #16A34A; margin-bottom: 6px;">自动维护说明</div>
+                                    <div style="font-weight: 600; color: #16A34A; margin-bottom: 6px;">什么是派生指标？</div>
                                     <div style="font-size: 13px; color: #166534; line-height: 1.6;">
-                                        在 2.0 版本中，<strong>派生指标由系统自动维护和管理，对业务用户透明</strong>。系统会根据原子指标、时间周期和维度自动生成派生指标（如近 7 天 GMV、昨日客单价等）。
+                                        <strong>派生指标</strong>是基于<strong>原子指标</strong>，通过添加<strong>时间周期</strong>（如近7天、近30天）和<strong>维度</strong>（如门店、渠道）自动生成的业务指标。
                                         <br><br>
-                                        您可以直接使用这些派生指标进行数据分析，无需手动创建或管理。所有派生指标都会自动更新，确保数据的准确性和一致性。
+                                        <strong>示例：</strong>
+                                        <ul style="margin: 8px 0; padding-left: 20px;">
+                                            <li>「近7天支付GMV」= 原子指标「支付金额」+ 时间周期「近7天」+ 维度「门店、渠道」</li>
+                                            <li>「昨日客单价」= 原子指标「支付金额」+ 时间周期「近1天」+ 维度「门店」</li>
+                                        </ul>
+                                        <br>
+                                        在 2.0 版本中，<strong>派生指标由系统自动维护和管理，对业务用户透明</strong>。系统会根据原子指标、时间周期和维度自动生成派生指标，您可以直接使用这些派生指标进行数据分析，无需手动创建或管理。所有派生指标都会自动更新，确保数据的准确性和一致性。
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="filter-bar">
+                    <div class="filter-bar" style="display: none;">
                         <input type="text" class="p-inputtext" placeholder="搜索指标名称..." style="width: 300px;" oninput="filterList('derived', this.value)">
                          <select class="p-inputtext" style="width: 150px;" onchange="filterListStatus('derived', this.value)">
                             <option value="">所有状态</option>
@@ -369,7 +375,7 @@
                         </select>
                     </div>
 
-                    <div class="card">
+                    <div class="card" style="display: none;">
                         <div style="padding: 16px; background: #FAFAFA; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center;">
                             <div style="font-size: 13px; color: #6B7280;">
                                 <i class="fas fa-info-circle" style="margin-right: 6px;"></i>
@@ -382,7 +388,7 @@
                                     <th>指标名称</th>
                                     <th>原子指标</th>
                                     <th>时间周期</th>
-                                    <th>修饰词</th>
+                                    <th style="display: none;">修饰词</th>
                                     <th>维度</th>
                                     <th>状态</th>
                                     <th>操作</th>

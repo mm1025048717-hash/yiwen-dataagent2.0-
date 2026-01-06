@@ -114,7 +114,7 @@ function renderDerivedList(filterText = '', filterStatus = '') {
             <td><b>${item.name}</b> <span style="font-size: 11px; color: #10B981; margin-left: 6px;" title="系统自动生成"><i class="fas fa-magic"></i> 自动</span></td>
             <td><span class="link-text">${atomName}</span></td>
             <td>${item.period}</td>
-            <td>-</td>
+            <td style="display: none;">-</td>
             <td>${item.dims.join(', ')}</td>
             <td>${getStatusBadge(item.status)}</td>
             <td>
