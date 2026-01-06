@@ -111,19 +111,28 @@ function renderDerivedList(filterText = '', filterStatus = '') {
         const atomName = atom ? atom.name : item.atomCode;
         return `
         <tr>
-            <td><b>${item.name}</b></td>
+            <td><b>${item.name}</b> <span style="font-size: 11px; color: #10B981; margin-left: 6px;" title="系统自动生成"><i class="fas fa-magic"></i> 自动</span></td>
             <td><span class="link-text">${atomName}</span></td>
             <td>${item.period}</td>
             <td>-</td>
             <td>${item.dims.join(', ')}</td>
             <td>${getStatusBadge(item.status)}</td>
             <td>
-                <button class="p-button p-button-text p-button-sm" onclick="editIndicator('derived', ${item.id})">编辑</button>
-                ${renderStatusActionBtn('derived', item.id, item.status)}
-                <button class="p-button p-button-text p-button-sm p-button-danger" onclick="deleteItem('derived', ${item.id})">删除</button>
+                <button class="p-button p-button-text p-button-sm" onclick="viewDerivedDetail(${item.id})" title="查看详情">查看</button>
             </td>
         </tr>
-    `}).join('') : '<tr><td colspan="7" style="text-align:center; color:#999;">无数据</td></tr>';
+    `}).join('') : '<tr><td colspan="7" style="text-align:center; color:#999;">暂无派生指标，系统将根据原子指标自动生成</td></tr>';
+}
+
+// 查看派生指标详情（只读）
+function viewDerivedDetail(id) {
+    const item = store.derived.find(d => d.id === id);
+    if (!item) return;
+    
+    const atom = store.atomic.find(a => a.code === item.atomCode);
+    const atomName = atom ? atom.name : item.atomCode;
+    
+    alert(`派生指标详情：\n\n指标名称：${item.name}\n基于原子指标：${atomName}\n时间周期：${item.period}\n维度：${item.dims.join(', ')}\n状态：${item.status === 'online' ? '已上线' : '草稿'}\n\n说明：此指标由系统自动维护，无需手动管理。`);
 }
 
 function renderCompositeList(filterText = '') {

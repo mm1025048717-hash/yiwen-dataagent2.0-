@@ -242,8 +242,8 @@
                 <!-- View: Overview -->
                 <div id="view-overview" class="tab-view">
                     <div style="margin-bottom: 24px;">
-                        <h2 style="margin: 0 0 8px 0;">欢迎回来，管理员</h2>
-                        <p style="color: var(--text-secondary); margin: 0;">这里是您的指标资产全景概览。</p>
+                        <h2 style="margin: 0 0 8px 0;">指标平台概览</h2>
+                        <p style="color: var(--text-secondary); margin: 0;">查看可用的指标范围，快速利用这些指标获得数据洞察。派生指标由系统自动维护，原子指标由数据平台团队治理提供。</p>
                     </div>
 
                     <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px;">
@@ -273,16 +273,16 @@
                         <div class="card-title">如何快速上手指标平台</div>
                         <div style="display:flex; gap:24px; flex-wrap:wrap; font-size:13px; color:var(--text-secondary);">
                             <div style="flex:1; min-width:220px;">
-                                <div style="font-weight:600; margin-bottom:6px;">1. 配置原子指标</div>
-                                <p style="margin:0;">在「原子指标管理」中，为核心事实表（如订单、支付、访问日志）配置金额、数量、用户数等基础度量。</p>
+                                <div style="font-weight:600; margin-bottom:6px;">1. 浏览可用指标</div>
+                                <p style="margin:0;">在「原子指标管理」中查看由数据平台/数据基建部门已治理好的原子指标，这些指标可直接用于数据分析，无需关注底层技术细节。</p>
                             </div>
                             <div style="flex:1; min-width:220px;">
-                                <div style="font-weight:600; margin-bottom:6px;">2. 定义派生/复合指标</div>
-                                <p style="margin:0;">在「派生指标」和「复合指标」中基于原子指标，按时间周期和维度沉淀业务口径，例如近 7 天 GMV、客单价、ROI 等。</p>
+                                <div style="font-weight:600; margin-bottom:6px;">2. 使用派生指标（自动生成）</div>
+                                <p style="margin:0;">派生指标由系统自动维护和管理，对业务用户透明。您可以直接使用这些指标（如近 7 天 GMV、客单价等）进行数据分析，无需手动创建。</p>
                             </div>
                             <div style="flex:1; min-width:220px;">
-                                <div style="font-weight:600; margin-bottom:6px;">3. 发布数据服务 API</div>
-                                <p style="margin:0;">在「数据服务 API」中为指标注册接口，供报表、看板或业务系统统一调用，避免重复造轮子。</p>
+                                <div style="font-weight:600; margin-bottom:6px;">3. 调用数据服务 API</div>
+                                <p style="margin:0;">在「数据服务 API」中查看可用的指标接口，供报表、看板或业务系统统一调用，快速获得数据洞察。</p>
                             </div>
                         </div>
                     </div>
@@ -290,9 +290,23 @@
 
                 <!-- View: Atomic Indicators -->
                 <div id="view-atomic" class="tab-view hidden">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 style="margin: 0;">原子指标管理</h2>
-                        <button class="p-button" onclick="openIndicatorDrawer('atomic')"><i class="fas fa-plus"></i> 新建原子指标</button>
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h2 style="margin: 0;">原子指标管理</h2>
+                        </div>
+                        <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                                <i class="fas fa-info-circle" style="color: #0369A1; margin-top: 2px; font-size: 18px;"></i>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: #0369A1; margin-bottom: 6px;">原子指标说明</div>
+                                    <div style="font-size: 13px; color: #075985; line-height: 1.6;">
+                                        原子指标由<strong>数据平台/数据基建部门</strong>负责治理和提供。这些指标基于核心事实表（如订单、支付、访问日志）配置，包含金额、数量、用户数等基础度量。
+                                        <br><br>
+                                        <strong>业务部门可直接基于已治理好的原子指标进行数据分析</strong>，无需关注数据源、表结构等技术细节。如需新增或修改原子指标，请联系数据平台团队。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="filter-bar">
@@ -327,9 +341,23 @@
 
                  <!-- View: Derived Indicators -->
                  <div id="view-derived" class="tab-view hidden">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 style="margin: 0;">派生指标管理</h2>
-                        <button class="p-button" onclick="openIndicatorDrawer('derived')"><i class="fas fa-plus"></i> 新建派生指标</button>
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h2 style="margin: 0;">派生指标</h2>
+                        </div>
+                        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                                <i class="fas fa-magic" style="color: #16A34A; margin-top: 2px; font-size: 18px;"></i>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: #16A34A; margin-bottom: 6px;">自动维护说明</div>
+                                    <div style="font-size: 13px; color: #166534; line-height: 1.6;">
+                                        在 2.0 版本中，<strong>派生指标由系统自动维护和管理，对业务用户透明</strong>。系统会根据原子指标、时间周期和维度自动生成派生指标（如近 7 天 GMV、昨日客单价等）。
+                                        <br><br>
+                                        您可以直接使用这些派生指标进行数据分析，无需手动创建或管理。所有派生指标都会自动更新，确保数据的准确性和一致性。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="filter-bar">
@@ -342,6 +370,12 @@
                     </div>
 
                     <div class="card">
+                        <div style="padding: 16px; background: #FAFAFA; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 13px; color: #6B7280;">
+                                <i class="fas fa-info-circle" style="margin-right: 6px;"></i>
+                                以下派生指标由系统自动生成和维护，可直接使用
+                            </div>
+                        </div>
                         <table class="p-datatable styled-table">
                             <thead>
                                 <tr>

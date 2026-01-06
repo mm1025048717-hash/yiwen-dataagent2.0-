@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>报表示例：双滚动问题的优化前后对比（完整文档）</title>
+    <style>
+      :root {
+        --primary: #2a6df4;
+        --primary-600: #1f57c8;
+        --bg: #ffffff;
+        --bg-soft: #f6f8fc;
+        --text: #0b1220;
+        --muted: #5b6476;
+        --border: #e6ebf5;
+        --sticky-top: 64px;
+        scrollbar-gutter: stable;
+      }
+      html { scroll-behavior: smooth; overscroll-behavior-y: contain; }
+      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--text); background: var(--bg); overflow-x: hidden; }
+
+      .page-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.9); backdrop-filter: saturate(180%) blur(10px); border-bottom: 1px solid var(--border); }
+      .container { max-width: 1160px; margin: 0 auto; padding: 14px 16px; }
+      .title { font-weight: 800; font-size: 20px; }
+      .nav { display: flex; gap: 8px; flex-wrap: wrap; }
+      .btn { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: #fff; cursor: pointer; }
+      .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+      .btn:hover { border-color: var(--primary); }
+
+      .section { margin: 18px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--bg-soft); border-bottom: 1px solid var(--border); }
+      .section-title { margin: 0; font-size: 16px; font-weight: 700; }
+      .section-desc { margin: 8px 16px 0; color: var(--muted); }
+      .section-body { padding: 16px; }
+
+      .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+      @media (min-width: 960px) { .grid.dual { grid-template-columns: 1fr 1fr; } }
+
+      .card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+      .card-head { padding: 10px 12px; background: var(--bg-soft); border-bottom: 1px solid var(--border); display:flex; align-items:center; justify-content: space-between; gap: 8px; }
+      .card-title { font-weight: 700; }
+      .card-body { padding: 12px; }
+
+      /* 案例截图 */
+      .case-box { border: 1px dashed var(--border); border-radius: 10px; padding: 12px; background: #fff; }
+      .case-placeholder { display:flex; align-items:center; justify-content:center; color: var(--muted); height: 220px; background: #fafcff; border: 1px dashed var(--border); border-radius: 8px; }
+      .case-img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); display:none; }
+
+      /* 反例：双滚动页面（中间容器纵向可滚 + 页面也可滚） */
+      .bad-wrap { border: 1px dashed #e8b4b4; background: #fff9f9; }
+      .bad-header { position: sticky; top: 0; background: #fff3f3; border-bottom: 1px solid #f3cdcd; padding: 8px 12px; }
+      .bad-main { height: 60vh; overflow: auto; padding: 8px 12px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+      .bad-table { width: 1200px; max-width: none; border-collapse: collapse; }
+      .bad-table th, .bad-table td { border-bottom: 1px solid #f3e1e1; padding: 8px 10px; }
+      .bad-table th { background: #fff7f7; position: sticky; top: 0; z-index: 1; }
+      .num { text-align: right; white-space: nowrap; }
+
+      /* 优化：单主轴纵向，仅表格横向可滚；说明层打开时锁 body */
+      .good-wrap { border: 1px dashed #b4c7f3; background: #f7faff; }
+      .good-header { position: sticky; top: 0; background: #edf3ff; border-bottom: 1px solid #d7e3ff; padding: 8px 12px; z-index: 2; }
+      .good-body { padding: 8px 12px; }
+      .h-scroll { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; }
+      .h-scroll.mask { -webkit-mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%); }
+      .good-table { width: 1200px; max-width: none; border-collapse: collapse; }
+      .good-table th, .good-table td { border-bottom: 1px solid var(--border); padding: 8px 10px; }
+      .good-table th { background: #f3f6ff; position: sticky; top: 0; z-index: 1; }
+
+      /* 说明层：反例（不锁定 body） */
+      .panel { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; transform: translateX(100%); transition: transform .25s ease; background: #fff; border-left: 1px solid var(--border); z-index: 80; overflow: auto; }
+      .panel.open { transform: translateX(0); }
+
+      /* Bottom Sheet：优化（锁定 body） */
+      .sheet-backdrop { position: fixed; inset: 0; display: none; background: rgba(13,18,32,.42); z-index: 120; }
+      .sheet-backdrop.open { display: block; }
+      .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; max-height: min(80dvh, 560px); overflow: auto; overscroll-behavior: contain; border-top: 1px solid var(--border); border-radius: 12px 12px 0 0; transform: translateY(100%); transition: transform .25s ease; z-index: 121; }
+      .sheet.open { transform: translateY(0); }
+      .sheet-head { position: sticky; top: 0; background: var(--bg-soft); border-bottom: 1px solid var(--border); padding: 12px 16px; display:flex; align-items:center; justify-content: space-between; }
+      .sheet-body { padding: 12px 16px; }
+      body.modal-open { position: fixed; width: 100%; overflow: hidden; }
+
+      /* 代码区 */
+      .tabbar { display: flex; gap: 8px; flex-wrap: wrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .tab { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; color: var(--muted); }
+      .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+      .code { background: #0b1220; color: #cfe3ff; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; position: relative; -webkit-overflow-scrolling: touch; }
+      pre { margin: 0; padding: 14px 16px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 1.5; }
+      .copy-btn { position: absolute; right: 8px; top: 8px; background: rgba(255,255,255,.1); color: #e5eeff; border: 1px solid rgba(255,255,255,.2); padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+
+      .note { color: var(--muted); }
+      .kbd { font-family: ui-monospace, monospace; background: #eef2ff; border: 1px solid #d9e2ff; padding: 0 6px; border-radius: 6px; }
+
+      /* Mobile 适配 */
+      @media (max-width: 768px) {
+        body { padding-bottom: env(safe-area-inset-bottom); }
+        .page-header { padding: 6px 0; }
+        .page-header .container { padding: 8px 12px; }
+        .container { padding: 10px 12px calc(20px + env(safe-area-inset-bottom)); }
+        .title { font-size: 17px; line-height: 1.25; }
+        .nav { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; gap: 6px; flex-wrap: nowrap; }
+        .btn { padding: 8px 10px; min-height: 40px; white-space: nowrap; }
+        .section { border-radius: 10px; margin: 12px 0; }
+        .container > .section:first-of-type { margin-top: 10px; }
+        .section-head { padding: 10px 12px; flex-direction: column; align-items: flex-start; gap: 6px; }
+        .section-body { padding: 12px; }
+        .grid { gap: 12px; }
+        .case-placeholder { height: 160px; }
+        pre { font-size: 12px; }
+        /* 防止表格撑爆视口，交给容器横向滚动 */
+        .good-table, .bad-table { width: max(720px, 100%); }
+        .h-scroll { overflow-x: auto; }
+        .bad-main { overflow: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="container" style="display:flex; align-items:center; justify-content: space-between; gap: 12px;">
+        <div class="title">报表示例：双滚动问题的优化前后对比（完整文档）</div>
+        <nav class="nav">
+          <a class="btn" href="#case">案例</a>
+          <a class="btn" href="#prototype">原型对比</a>
+          <a class="btn" href="#code">代码对比</a>
+          <a class="btn" href="#prd">PRD 摘要</a>
+          <a class="btn primary" href="report_prototype.html">打开 React+AntD 演示</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <section id="case" class="section">
+        <div class="section-head">
+          <h2 class="section-title">案例截图与问题</h2>
+        </div>
+        <div class="section-body">
+          <div class="case-box">
+            <img id="caseImg" class="case-img" alt="报表问题截图（可点击或拖拽本地图片上传预览）" />
+            <div id="caseFallback" class="case-placeholder">点击此处或拖拽图片到此区域即可预览（也可将图片命名为 <b style="margin:0 4px;">case.png</b> 放同目录）</div>
+            <input id="caseFile" type="file" accept="image/*" style="display:none" />
+          </div>
+          <ul>
+            <li>页面 <span class="kbd">body</span> 可滚，同时表格容器 <span class="kbd">overflow: auto</span> → 出现<strong>双纵向滚动条</strong>。</li>
+            <li>右侧说明/抽屉打开时仍能滚动页面，产生<strong>滚动穿透</strong>与手势冲突。</li>
+            <li>移动端直接塞入大表，命中难、横向提示弱，信息找回成本高。</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="prototype" class="section">
+        <div class="section-head">
+          <h2 class="section-title">优化前后原型对比</h2>
+          <div class="note">左：反例（双滚 + 无锁定）｜右：优化（单主轴 + 横向溢出 + 锁定）</div>
+        </div>
+        <div class="section-body">
+          <div class="grid dual">
+            <!-- 反例 -->
+            <div class="card bad-wrap">
+              <div class="card-head">
+                <div class="card-title">A. 反例：双纵向滚动</div>
+                <div style="display:flex; gap:8px;">
+                  <button id="openPanel" class="btn">打开说明层（不锁定）</button>
+                  <button id="scrollBadInner" class="btn">滚到内层底</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="bad-header">筛选条（sticky）</div>
+                <div id="badMain" class="bad-main">
+                  <table class="bad-table">
+                    <thead>
+                      <tr><th>序号</th><th>事业部</th><th>企业</th><th class="num">成本渗透率</th></tr>
+                    </thead>
+                    <tbody id="badTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- 优化 -->
+            <div class="card good-wrap">
+              <div class="card-head">
+                <div class="card-title">B. 优化：单主轴纵向 + 表格仅横向</div>
+                <div style="display:flex; gap:8px;">
+                  <button id="openSheetBtn" class="btn">打开说明 Bottom Sheet（锁定）</button>
+                  <button id="scrollPageBottom" class="btn">滚到页面底部</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="good-header">筛选条（sticky）</div>
+                <div class="good-body">
+                  <div class="h-scroll mask">
+                    <table class="good-table">
+                      <thead>
+                        <tr><th>序号</th><th>事业部</th><th>企业</th><th class="num">成本渗透率</th></tr>
+                      </thead>
+                      <tbody id="goodTbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="code" class="section">
+        <div class="section-head">
+          <h2 class="section-title">代码对比（可复制）</h2>
+          <div class="tabbar">
+            <button class="tab active" data-kind="html">HTML</button>
+            <button class="tab" data-kind="css">CSS</button>
+            <button class="tab" data-kind="js">JS</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="tabbar">
+            <button class="tab active" data-variant="bad">反例</button>
+            <button class="tab" data-variant="good">优化</button>
+          </div>
+          <div class="code" style="margin-top:12px;">
+            <button id="copyBtn" class="copy-btn">复制代码</button>
+            <pre id="codeBlock"></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="prd" class="section">
+        <div class="section-head">
+          <h2 class="section-title">PRD 摘要（单主轴滚动改造）</h2>
+        </div>
+        <div class="section-body">
+          <ul>
+            <li><strong>一屏一个主滚轴</strong>：仅保留纵向主滚，禁止第二个纵向滚容器。</li>
+            <li><strong>表格仅横向溢出</strong>：使用遮罩渐隐提示可横拖；首列/表头可 sticky。</li>
+            <li><strong>弹层锁住 body</strong>：打开说明层/Bottom Sheet 时页面不滚动，关闭恢复原位置。</li>
+            <li><strong>移动端优先卡片化</strong>：支持与表格视图一键切换。</li>
+            <li><strong>性能</strong>：懒加载、虚拟滚动、触底加载；目标 60fps。</li>
+          </ul>
+          <p class="note">更完整交互（含横向渐隐、sticky、小计示例、视图切换）可打开顶部按钮“React+AntD 演示”。</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- 反例右侧说明层（不锁定 body） -->
+    <aside id="panel" class="panel" aria-hidden="true" role="dialog">
+      <div style="position:sticky; top:0; background:#fff; border-bottom:1px solid var(--border); padding:12px 12px; font-weight:700;">指标说明（反例：不锁定 body）</div>
+      <div style="padding:12px;">
+        <p>滚动此面板时，底层页面仍可滚动，容易产生穿透与双滚冲突。</p>
+        <p>建议采用 Bottom Sheet 或抽屉，并在打开时锁 body。</p>
+        <p>……（示例文本 x 20）</p>
+        <p>……（示例文本 x 20）</p>
+        <p>……（示例文本 x 20）</p>
+      </div>
+    </aside>
+
+    <!-- 优化：Bottom Sheet（锁定 body） -->
+    <div id="sheetBackdrop" class="sheet-backdrop"></div>
+    <div id="sheet" class="sheet" aria-hidden="true" aria-modal="true" role="dialog">
+      <div class="sheet-head">
+        <div>指标说明（优化：锁定 body）</div>
+        <button id="closeSheet" class="btn">关闭</button>
+      </div>
+      <div class="sheet-body">
+        <p>此处可滚动，但页面根保持静止；关闭后恢复到原滚动位置。</p>
+        <ul>
+          <li>Bottom Sheet 更符合移动端信息密度与操作流。</li>
+          <li>桌面端可改为右侧抽屉，同样需要锁定 body。</li>
+        </ul>
+        <p>……（示例文本 x 20）</p>
+        <p>……（示例文本 x 20）</p>
+        <p>……（示例文本 x 20）</p>
+      </div>
+    </div>
+
+    <script>
+      // 图片占位与本地选择/拖拽预览（避免因缺少 case.png 导致的报错）
+      (function(){
+        const img = document.getElementById('caseImg');
+        const fb = document.getElementById('caseFallback');
+        const fileInput = document.getElementById('caseFile');
+        function show(dataUrl){ img.src = dataUrl; img.style.display = 'block'; fb.style.display = 'none'; }
+        function pick(){ fileInput.click(); }
+        // 仅用户触发加载，避免自动请求本地不存在的 case.png
+        fileInput.addEventListener('change', () => {
+          const file = fileInput.files && fileInput.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = e => show(String(e.target?.result || ''));
+          reader.readAsDataURL(file);
+        });
+        const box = document.querySelector('.case-box');
+        box.addEventListener('click', pick);
+        box.addEventListener('dragover', (e)=>{ e.preventDefault(); });
+        box.addEventListener('drop', (e)=>{
+          e.preventDefault();
+          const file = e.dataTransfer?.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = ev => show(String(ev.target?.result || ''));
+          reader.readAsDataURL(file);
+        });
+      })();
+
+      // 生成示例数据
+      function createRow(i){
+        const name = '企业 ' + (i + 1);
+        const dept = i % 2 ? '事业部B' : '事业部A';
+        const ratio = (Math.random() * 0.2).toFixed(2) + '%';
+        return `<tr><td>${i+1}</td><td>${dept}</td><td>${name}</td><td class="num">${ratio}</td></tr>`;
+      }
+      const badTbody = document.getElementById('badTbody');
+      const goodTbody = document.getElementById('goodTbody');
+      let html = ''; for (let i = 0; i < 80; i++) html += createRow(i);
+      badTbody.innerHTML = html; goodTbody.innerHTML = html;
+
+      // 反例：右侧面板（不锁定 body）
+      (function(){
+        const panel = document.getElementById('panel');
+        document.getElementById('openPanel').addEventListener('click', () => {
+          panel.classList.add('open'); panel.setAttribute('aria-hidden', 'false');
+        });
+        panel.addEventListener('click', (e)=>{ if(e.target === panel) panel.classList.remove('open'); });
+        document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') panel.classList.remove('open'); });
+        document.getElementById('scrollBadInner').addEventListener('click', () => {
+          const el = document.getElementById('badMain'); el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        });
+      })();
+
+      // 优化：Bottom Sheet（锁定 body）
+      (function(){
+        const sheet = document.getElementById('sheet');
+        const backdrop = document.getElementById('sheetBackdrop');
+        const openBtn = document.getElementById('openSheetBtn');
+        const closeBtn = document.getElementById('closeSheet');
+        let prevY = 0;
+        function open(){
+          prevY = window.scrollY;
+          document.body.style.top = `-${prevY}px`;
+          document.body.classList.add('modal-open');
+          backdrop.classList.add('open');
+          sheet.classList.add('open');
+          sheet.setAttribute('aria-hidden','false');
+        }
+        function close(){
+          const top = parseInt(document.body.style.top || '0', 10);
+          document.body.classList.remove('modal-open');
+          document.body.style.top = '';
+          window.scrollTo(0, Math.abs(top) || prevY || 0);
+          backdrop.classList.remove('open');
+          sheet.classList.remove('open');
+          sheet.setAttribute('aria-hidden','true');
+        }
+        openBtn.addEventListener('click', open);
+        closeBtn.addEventListener('click', close);
+        backdrop.addEventListener('click', close);
+        document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && sheet.classList.contains('open')) close(); });
+        document.getElementById('scrollPageBottom').addEventListener('click', () => { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); });
+      })();
+
+      // 代码对比：内容
+      const code = {
+        bad: {
+          html: `<body>\n  <div class="page">\n    <div class="table-wrap" style="height:70vh; overflow:auto;">\n      <table>...</table>\n    </div>\n  </div>\n</body>`,
+          css: `/* 反例：制造第二个纵向滚容器 */\n.table-wrap {\n  height: 70vh;\n  overflow: auto;\n}`,
+          js: `// 反例抽屉：未锁定 body\nopenPanel = () => panel.classList.add('open');\nclosePanel = () => panel.classList.remove('open');`
+        },
+        good: {
+          html: `<header class="top">...</header>\n<section class="filters">...</section>\n<main class="page">\n  <div class="table-wrap">\n    <table class="table">...</table>\n  </div>\n</main>`,
+          css: `/* 单主轴纵向滚动（或直接让 body 作为主滚） */\n.page {\n  min-height: 100dvh;\n  overflow-y: auto;\n}\n/* 表格仅横向滚动 + 渐隐提示 */\n.table-wrap {\n  overflow-x: auto;\n  overflow-y: visible;\n  -webkit-overflow-scrolling: touch;\n  mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);\n}\n/* Bottom Sheet 打开时锁 body */\nbody.modal-open { position: fixed; width:100%; overflow:hidden; }`,
+          js: `// Bottom Sheet：锁定 body\nconst y = window.scrollY;\ndocument.body.style.top = \`-\${y}px\`;\ndocument.body.classList.add('modal-open');\n// 关闭：\nconst top = parseInt(document.body.style.top||'0',10);\ndocument.body.classList.remove('modal-open');\ndocument.body.style.top = '';\nwindow.scrollTo(0, Math.abs(top)||0);`
+        }
+      };
+      let kind = 'html'; let variant = 'bad';
+      const codeBlock = document.getElementById('codeBlock');
+      const render = () => { codeBlock.textContent = code[variant][kind]; };
+      render();
+      document.querySelectorAll('[data-kind]').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-kind]').forEach(b => b.classList.remove('active')); btn.classList.add('active'); kind = btn.dataset.kind; render();
+      }));
+      document.querySelectorAll('[data-variant]').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-variant]').forEach(b => b.classList.remove('active')); btn.classList.add('active'); variant = btn.dataset.variant; render();
+      }));
+      document.getElementById('copyBtn').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(codeBlock.textContent || ''); const b = document.getElementById('copyBtn'); const t = b.textContent; b.textContent = '已复制'; setTimeout(()=> b.textContent = t, 1200); } catch(e) { alert('复制失败，请手动复制'); }
+      });
+    </script>
+  </body>
+</html>
+
+

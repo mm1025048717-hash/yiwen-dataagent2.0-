@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>最优上下滚动交互：原型演示与代码对比</title>
+    <style>
+      :root {
+        --primary: #2a6df4;
+        --primary-600: #1f57c8;
+        --bg: #ffffff;
+        --bg-soft: #f6f8fc;
+        --text: #0b1220;
+        --muted: #5b6476;
+        --border: #e6ebf5;
+        scrollbar-gutter: stable;
+      }
+
+      html {
+        color-scheme: light;
+        -webkit-text-size-adjust: 100%;
+        scroll-behavior: smooth;
+        overscroll-behavior-y: contain;
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK", sans-serif;
+        color: var(--text);
+        background: var(--bg);
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+
+      .page-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(255,255,255,0.9);
+        backdrop-filter: saturate(180%) blur(10px);
+        border-bottom: 1px solid var(--border);
+      }
+      .page-header .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 12px;
+        padding-bottom: 12px;
+      }
+      .title {
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .nav {
+        display: flex;
+        gap: 8px;
+      }
+      .btn {
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all .2s ease;
+      }
+      .btn:hover { border-color: var(--primary); }
+      .btn.primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      .btn.primary:hover { background: var(--primary-600); border-color: var(--primary-600); }
+
+      .section {
+        margin-top: 24px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--bg);
+      }
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        gap: 12px;
+      }
+      .section-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .section-desc {
+        margin: 8px 16px 0;
+        color: var(--muted);
+      }
+      .section-body {
+        padding: 16px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      @media (min-width: 960px) {
+        .grid.demo { grid-template-columns: 1fr 1fr; }
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 12px;
+        background: var(--bg-soft);
+        border-bottom: 1px solid var(--border);
+        gap: 8px;
+      }
+      .card-title { font-weight: 700; }
+      .card-body { padding: 12px; }
+
+      /* 反例：双滚动页面 */
+      .bad-wrap {
+        border: 1px dashed #e8b4b4;
+        background: #fff9f9;
+      }
+      .bad-topbar {
+        position: sticky;
+        top: 0;
+        background: #fff3f3;
+        border-bottom: 1px solid #f3cdcd;
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      .bad-main {
+        height: 60vh; /* 制造内层滚动区域 */
+        overflow: auto;
+        overscroll-behavior: auto; /* 不阻断滚动链，便于对比 */
+        padding: 8px 12px;
+        background: #fff;
+        border-bottom: 1px dashed #f3cdcd;
+      }
+      .bad-footer { padding: 8px 12px; }
+
+      /* 优化：单滚动页面（根滚动） */
+      .good-wrap {
+        border: 1px dashed #b4c7f3;
+        background: #f7faff;
+      }
+      .good-topbar {
+        position: sticky;
+        top: 0;
+        background: #edf3ff;
+        border-bottom: 1px solid #d7e3ff;
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      .good-main {
+        min-height: 100dvh; /* 仅用于占位演示，单滚动 */
+        padding: 8px 12px;
+      }
+
+      .filler {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .box {
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      /* 模态框（对比：无锁定 vs 有锁定） */
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(13, 18, 32, 0.42);
+        z-index: 50;
+        padding: 24px;
+      }
+      .modal.open { display: flex; }
+      .modal__panel {
+        width: min(720px, 92vw);
+        max-height: min(80dvh, 640px);
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .modal__head {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-soft);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .modal__content {
+        padding: 12px 16px;
+        overflow: auto; /* 面板内部可滚动 */
+        overscroll-behavior: contain; /* 防止滚动穿透到 body */
+      }
+
+      /* 代码对比区 */
+      .tabbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .tab {
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+        cursor: pointer;
+        color: var(--muted);
+      }
+      .tab.active {
+        color: #fff;
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+      .code-wrap {
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: #0b1220;
+      }
+      pre {
+        margin: 0;
+        padding: 14px 16px;
+        color: #cfe3ff;
+        overflow: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .copy-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(255,255,255,0.1);
+        color: #e5eeff;
+        border: 1px solid rgba(255,255,255,0.2);
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .kbd { font-family: ui-monospace, monospace; background: #eef2ff; border: 1px solid #d9e2ff; padding: 0 6px; border-radius: 6px; }
+
+      /* 辅助：移动端 100vh 回退变量 */
+      .use-vh-fallback { min-height: calc(var(--vh, 1vh) * 100); }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="container">
+        <div class="title">最优上下滚动交互：原型演示与代码对比</div>
+        <nav class="nav">
+          <a class="btn" href="#demo">原型演示</a>
+          <a class="btn" href="#code">代码对比</a>
+          <button class="btn primary" id="quick-open-good-modal">打开优化弹窗</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <section id="demo" class="section">
+        <div class="section-header">
+          <h2 class="section-title">原型交互对比</h2>
+          <div>
+            <span class="kbd">A</span> 反例：双滚动 &nbsp;|&nbsp; <span class="kbd">B</span> 优化：单滚动
+          </div>
+        </div>
+        <p class="section-desc">左侧是“双滚动条”反例（中间内容区用固定高度 + overflow: auto，且弹窗未锁定 body）；右侧是“单滚动”优化方案（以文档根为唯一滚动容器，并在弹窗时锁定 body）。</p>
+        <div class="section-body">
+          <div class="grid demo">
+            <!-- 反例：双滚动条 -->
+            <div class="card bad-wrap">
+              <div class="card-header">
+                <div class="card-title">A. 反例：双滚动条</div>
+                <div class="card-actions">
+                  <button class="btn" id="bad-open-modal">打开弹窗（无锁定）</button>
+                  <button class="btn" id="bad-scroll-inner">滚到内层底部</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="bad-topbar">反例顶部条（sticky），页面与内层都可滚动 → 双滚动条</div>
+                <div class="bad-main" id="badMain">
+                  <div class="filler">
+                    <div class="box">块 1：独立可滚容器导致与页面根同时滚动。</div>
+                    <div class="box">块 2：当内层滚到底部时，滚动会链式传递到外层。</div>
+                    <div class="box">块 3：移动端手势体验不一致，易产生穿透。</div>
+                    <div class="box">块 4：键盘焦点与读屏的逻辑焦点会在多个滚层间迷失。</div>
+                    <div class="box">块 5</div><div class="box">块 6</div><div class="box">块 7</div><div class="box">块 8</div>
+                    <div class="box">块 9</div><div class="box">块 10</div><div class="box">块 11</div><div class="box">块 12</div>
+                    <div class="box">块 13</div><div class="box">块 14</div><div class="box">块 15</div><div class="box">块 16</div>
+                    <div class="box">块 17</div><div class="box">块 18</div><div class="box">块 19</div><div class="box">块 20</div>
+                  </div>
+                </div>
+                <div class="bad-footer">反例底部说明：注意桌面端会出现两个垂直滚动条。</div>
+              </div>
+            </div>
+
+            <!-- 优化：单滚动 -->
+            <div class="card good-wrap">
+              <div class="card-header">
+                <div class="card-title">B. 优化：单滚动</div>
+                <div class="card-actions">
+                  <button class="btn" id="good-open-modal">打开弹窗（锁定 body）</button>
+                  <button class="btn" id="good-scroll-page">滚到页面底部</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="good-topbar">优化顶部条（sticky），仅文档根滚动，布局更稳定</div>
+                <div class="good-main">
+                  <div class="filler">
+                    <div class="box">块 1：页面根是唯一滚动容器，交互直观。</div>
+                    <div class="box">块 2：内层尽量避免纵向滚动，如需滚动仅在弹窗或局部组件。</div>
+                    <div class="box">块 3：开启弹窗时锁定 body，避免穿透。</div>
+                    <div class="box">块 4：移动端使用 100dvh 或 --vh 兼容视口高度。</div>
+                    <div class="box">块 5</div><div class="box">块 6</div><div class="box">块 7</div><div class="box">块 8</div>
+                    <div class="box">块 9</div><div class="box">块 10</div><div class="box">块 11</div><div class="box">块 12</div>
+                    <div class="box">块 13</div><div class="box">块 14</div><div class="box">块 15</div><div class="box">块 16</div>
+                    <div class="box">块 17</div><div class="box">块 18</div><div class="box">块 19</div><div class="box">块 20</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="code" class="section">
+        <div class="section-header">
+          <h2 class="section-title">代码对比</h2>
+          <div class="tabbar" role="tablist" aria-label="代码类型">
+            <button class="tab active" data-code-kind="html">HTML</button>
+            <button class="tab" data-code-kind="css">CSS</button>
+            <button class="tab" data-code-kind="js">JS</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="tabbar" role="tablist" aria-label="方案切换">
+            <button class="tab active" data-variant="bad">反例</button>
+            <button class="tab" data-variant="good">优化</button>
+          </div>
+
+          <div class="code-wrap" style="margin-top:12px;">
+            <button class="copy-btn" id="copyCode">复制代码</button>
+            <pre id="codeBlock" aria-live="polite"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 反例弹窗（无 body 锁定） -->
+    <div class="modal" id="badModal" aria-hidden="true" aria-modal="true" role="dialog">
+      <div class="modal__panel">
+        <div class="modal__head">
+          <div>反例弹窗（未锁定 body，易穿透）</div>
+          <button class="btn" id="badClose">关闭</button>
+        </div>
+        <div class="modal__content">
+          <p>滚动此处时，底层页面可能继续滚动（穿透）。</p>
+          <div class="filler">
+            <div class="box">内容 1</div><div class="box">内容 2</div><div class="box">内容 3</div><div class="box">内容 4</div>
+            <div class="box">内容 5</div><div class="box">内容 6</div><div class="box">内容 7</div><div class="box">内容 8</div>
+            <div class="box">内容 9</div><div class="box">内容 10</div><div class="box">内容 11</div><div class="box">内容 12</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 优化弹窗（锁定 body） -->
+    <div class="modal" id="goodModal" aria-hidden="true" aria-modal="true" role="dialog">
+      <div class="modal__panel">
+        <div class="modal__head">
+          <div>优化弹窗（已锁定 body，防穿透）</div>
+          <button class="btn" id="goodClose">关闭</button>
+        </div>
+        <div class="modal__content">
+          <p>这里可滚动，但页面根保持静止。</p>
+          <div class="filler">
+            <div class="box">内容 1</div><div class="box">内容 2</div><div class="box">内容 3</div><div class="box">内容 4</div>
+            <div class="box">内容 5</div><div class="box">内容 6</div><div class="box">内容 7</div><div class="box">内容 8</div>
+            <div class="box">内容 9</div><div class="box">内容 10</div><div class="box">内容 11</div><div class="box">内容 12</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 视口高度回退（移动端旧浏览器）
+      const setVH = () => {
+        document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+      };
+      setVH();
+      window.addEventListener('resize', setVH, { passive: true });
+
+      // Body Scroll Lock（优化方案会用到）
+      const BodyScrollLock = (() => {
+        let locked = false;
+        let prevY = 0;
+        return {
+          lock() {
+            if (locked) return;
+            prevY = window.scrollY;
+            document.body.dataset.scrollY = String(prevY);
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${prevY}px`;
+            document.body.style.left = '0';
+            document.body.style.right = '0';
+            document.body.style.overflow = 'hidden';
+            locked = true;
+          },
+          unlock() {
+            if (!locked) return;
+            const y = parseInt(document.body.dataset.scrollY || '0', 10);
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            document.body.style.overflow = '';
+            window.scrollTo({ top: y });
+            locked = false;
+          },
+          get isLocked() { return locked; }
+        };
+      })();
+
+      // 反例：事件绑定
+      const badModal = document.getElementById('badModal');
+      document.getElementById('bad-open-modal').addEventListener('click', () => {
+        badModal.classList.add('open');
+        badModal.setAttribute('aria-hidden', 'false');
+      });
+      document.getElementById('badClose').addEventListener('click', () => {
+        badModal.classList.remove('open');
+        badModal.setAttribute('aria-hidden', 'true');
+      });
+      document.getElementById('bad-scroll-inner').addEventListener('click', () => {
+        const el = document.getElementById('badMain');
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      });
+
+      // 优化：事件绑定
+      const goodModal = document.getElementById('goodModal');
+      const openGood = () => {
+        BodyScrollLock.lock();
+        goodModal.classList.add('open');
+        goodModal.setAttribute('aria-hidden', 'false');
+      };
+      const closeGood = () => {
+        goodModal.classList.remove('open');
+        goodModal.setAttribute('aria-hidden', 'true');
+        BodyScrollLock.unlock();
+      };
+      document.getElementById('good-open-modal').addEventListener('click', openGood);
+      document.getElementById('quick-open-good-modal').addEventListener('click', openGood);
+      document.getElementById('goodClose').addEventListener('click', closeGood);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && goodModal.classList.contains('open')) closeGood(); });
+      goodModal.addEventListener('click', (e) => { if (e.target === goodModal) closeGood(); });
+
+      document.getElementById('good-scroll-page').addEventListener('click', () => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      });
+
+      // 代码对比：内容
+      const codeSnippets = {
+        bad: {
+          html: `<!-- 反例：中间区域用固定高度 + overflow: auto，导致双滚动 -->\n<div class="bad-main" style="height:60vh; overflow:auto">\n  ...很多内容...\n</div>`,
+          css: `/* 反例：制造内层滚动容器（不推荐） */\n.bad-main {\n  height: 60vh;\n  overflow: auto;\n  /* overscroll-behavior: auto; 允许滚动链传递 */\n}`,
+          js: `// 反例弹窗：未锁定 body，易穿透\nconst open = () => {\n  document.getElementById('badModal').classList.add('open');\n};\nconst close = () => {\n  document.getElementById('badModal').classList.remove('open');\n};`
+        },
+        good: {
+          html: `<!-- 优化：仅文档根滚动，局部滚动仅在弹窗等组件内部 -->\n<main style="min-height:100dvh">\n  ...页面内容...\n</main>\n\n<!-- 弹窗内部可滚动，同时锁定 body -->\n<div class="modal__content" style="max-height:min(80dvh,640px); overflow:auto"></div>`,
+          css: `/* 文档根滚动 */\nhtml {\n  overscroll-behavior-y: contain;\n  scroll-behavior: smooth;\n}\n\n/* 弹窗面板内部滚动，阻断滚动穿透 */\n.modal__content {\n  max-height: min(80dvh, 640px);\n  overflow: auto;\n  overscroll-behavior: contain;\n}\n\n/* 移动端 100vh 兼容 */\n.use-vh-fallback {\n  min-height: calc(var(--vh, 1vh) * 100);\n}`,
+          js: `// Body Scroll Lock\nconst BodyScrollLock = (() => {\n  let locked = false, prevY = 0;\n  return {\n    lock(){ if(locked) return; prevY = window.scrollY;\n      document.body.dataset.scrollY = String(prevY);\n      Object.assign(document.body.style,{ position:'fixed', top:\`-\${prevY}px\`, left:'0', right:'0', overflow:'hidden' }); locked = true; },\n    unlock(){ if(!locked) return; const y = parseInt(document.body.dataset.scrollY||'0',10);\n      Object.assign(document.body.style,{ position:'', top:'', left:'', right:'', overflow:'' });\n      window.scrollTo({ top:y }); locked = false; }\n  };\n})();\n\n// 打开/关闭优化弹窗\nopenGood = () => { BodyScrollLock.lock(); goodModal.classList.add('open'); };\ncloseGood = () => { goodModal.classList.remove('open'); BodyScrollLock.unlock(); };`
+        }
+      };
+
+      // 代码对比：简单的 Tab 逻辑
+      let currentVariant = 'bad';
+      let currentKind = 'html';
+      const codeBlock = document.getElementById('codeBlock');
+      const renderCode = () => {
+        codeBlock.textContent = codeSnippets[currentVariant][currentKind];
+      };
+      renderCode();
+      document.querySelectorAll('[data-variant]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-variant]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentVariant = btn.dataset.variant;
+          renderCode();
+        });
+      });
+      document.querySelectorAll('[data-code-kind]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-code-kind]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentKind = btn.dataset.codeKind;
+          renderCode();
+        });
+      });
+
+      // 代码复制
+      document.getElementById('copyCode').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(codeBlock.textContent || '');
+          const btn = document.getElementById('copyCode');
+          const old = btn.textContent;
+          btn.textContent = '已复制';
+          setTimeout(() => (btn.textContent = old), 1200);
+        } catch (e) {
+          alert('复制失败，请手动选择代码复制');
+        }
+      });
+    </script>
+  </body>
+</html>
+
+
