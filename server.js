@@ -54,52 +54,50 @@ if (process.env.VERCEL) {
   console.log('📄 Testing style.css exists:', fs.existsSync(path.join(staticPath, 'style.css')));
 }
 
-// 在 Vercel 上，静态文件应该由 Vercel 自动处理
-// 但如果请求到达了 server.js，我们需要处理它们
-if (process.env.VERCEL) {
-  // 在 Vercel 上，只处理 API 和根路径，静态文件由 Vercel 自动处理
-  // 但如果静态文件请求到达这里，尝试提供它们
-  app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, res) => {
-    const cleanPath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
-    const ext = path.extname(req.path).toLowerCase();
-    
-    // 设置 MIME 类型
-    if (ext === '.css') {
-      res.setHeader('Content-Type', 'text/css; charset=utf-8');
-    } else if (ext === '.js') {
-      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    }
-    
-    // 尝试多个路径
-    const possiblePaths = [
-      path.join('/var/task', cleanPath),
-      path.join(process.cwd(), cleanPath),
-      path.join(__dirname, cleanPath),
-    ];
-    
-    for (const filePath of possiblePaths) {
-      try {
-        if (fs.existsSync(filePath)) {
-          console.log('✅ Serving:', req.path, 'from', filePath);
-          return res.sendFile(path.resolve(filePath));
-        }
-      } catch (e) {
-        // 继续
+// 静态文件服务 - 必须在 API 路由之前
+// 在 Vercel 上，所有请求都会路由到 server.js，所以需要处理静态文件
+app.use(express.static(staticPath, {
+  dotfiles: 'ignore',
+  etag: true,
+  maxAge: '1d',
+  index: false
+}));
+
+// 明确处理静态文件路由（作为后备）
+app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, res) => {
+  const cleanPath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
+  const ext = path.extname(req.path).toLowerCase();
+  
+  // 设置 MIME 类型
+  if (ext === '.css') {
+    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+  } else if (ext === '.js') {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  }
+  
+  // 尝试多个路径（Vercel 和本地都适用）
+  const possiblePaths = [
+    path.join(staticPath, cleanPath),
+    path.join(__dirname, cleanPath),
+    path.join(process.cwd(), cleanPath),
+    path.join('/var/task', cleanPath),
+  ];
+  
+  for (const filePath of possiblePaths) {
+    try {
+      const resolvedPath = path.resolve(filePath);
+      if (fs.existsSync(resolvedPath)) {
+        console.log('✅ Serving:', req.path, 'from', resolvedPath);
+        return res.sendFile(resolvedPath);
       }
+    } catch (e) {
+      // 继续尝试下一个路径
     }
-    
-    console.error('❌ Not found:', req.path);
-    res.status(404).send('File not found');
-  });
-} else {
-  // 本地开发：使用 express.static
-  app.use(express.static(staticPath, {
-    dotfiles: 'ignore',
-    etag: true,
-    maxAge: '1d',
-    index: false
-  }));
-}
+  }
+  
+  console.error('❌ Not found:', req.path, 'Tried:', possiblePaths);
+  res.status(404).send('File not found');
+});
 
 // DeepSeek API配置
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-e8312e0eae874f2f9122f6aa334f4b3f';
