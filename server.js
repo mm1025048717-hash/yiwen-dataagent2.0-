@@ -63,30 +63,49 @@ app.use(express.static(staticPath, {
   index: false
 }));
 
-// 明确处理静态文件路由（作为后备）
+// 明确处理静态文件路由（作为后备，在 express.static 之后）
+// 这个路由会在 express.static 找不到文件时触发
 app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, res) => {
   const cleanPath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
   const ext = path.extname(req.path).toLowerCase();
   
   // 设置 MIME 类型
-  if (ext === '.css') {
-    res.setHeader('Content-Type', 'text/css; charset=utf-8');
-  } else if (ext === '.js') {
-    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  const mimeTypes = {
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.json': 'application/json',
+    '.ico': 'image/x-icon',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'application/vnd.ms-fontobject'
+  };
+  
+  if (mimeTypes[ext]) {
+    res.setHeader('Content-Type', mimeTypes[ext]);
   }
   
   // 尝试多个路径（Vercel 和本地都适用）
   const possiblePaths = [
     path.join(staticPath, cleanPath),
+    path.join(staticPath, req.path.slice(1)), // 也尝试带斜杠的路径
     path.join(__dirname, cleanPath),
+    path.join(__dirname, req.path.slice(1)),
     path.join(process.cwd(), cleanPath),
+    path.join(process.cwd(), req.path.slice(1)),
     path.join('/var/task', cleanPath),
+    path.join('/var/task', req.path.slice(1)),
   ];
   
   for (const filePath of possiblePaths) {
     try {
       const resolvedPath = path.resolve(filePath);
-      if (fs.existsSync(resolvedPath)) {
+      if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
         console.log('✅ Serving:', req.path, 'from', resolvedPath);
         return res.sendFile(resolvedPath);
       }
@@ -95,8 +114,12 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, re
     }
   }
   
-  console.error('❌ Not found:', req.path, 'Tried:', possiblePaths);
-  res.status(404).send('File not found');
+  console.error('❌ Not found:', req.path);
+  console.error('   Static path:', staticPath);
+  console.error('   __dirname:', __dirname);
+  console.error('   process.cwd():', process.cwd());
+  console.error('   Tried paths:', possiblePaths);
+  res.status(404).send(`File not found: ${req.path}`);
 });
 
 // DeepSeek API配置
