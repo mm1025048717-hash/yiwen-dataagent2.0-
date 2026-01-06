@@ -69,12 +69,17 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (re
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
   }
   
-  // 尝试多个可能的路径
+  // 尝试多个可能的路径（包括带斜杠和不带斜杠的）
   const possiblePaths = [
     path.join(staticPath, cleanPath),
     path.join(__dirname, cleanPath),
     path.join(process.cwd(), cleanPath),
     path.join('/var/task', cleanPath),
+    // 也尝试原始路径（带斜杠）
+    path.join(staticPath, req.path),
+    path.join(__dirname, req.path),
+    path.join(process.cwd(), req.path),
+    path.join('/var/task', req.path),
   ];
   
   let fileFound = false;
@@ -82,7 +87,7 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (re
     try {
       if (fs.existsSync(filePath)) {
         console.log('✅ Serving file:', req.path, 'from', filePath);
-        res.sendFile(filePath);
+        res.sendFile(filePath, { root: '/' });
         fileFound = true;
         break;
       }
@@ -92,7 +97,11 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (re
   }
   
   if (!fileFound) {
-    console.error('❌ File not found:', req.path, 'tried paths:', possiblePaths);
+    console.error('❌ File not found:', req.path);
+    console.error('   Tried paths:', possiblePaths);
+    console.error('   Static path:', staticPath);
+    console.error('   __dirname:', __dirname);
+    console.error('   process.cwd():', process.cwd());
     res.status(404).json({ error: 'File not found', path: req.path });
   }
 });
