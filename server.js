@@ -54,9 +54,18 @@ if (process.env.VERCEL) {
   console.log('📄 Testing style.css exists:', fs.existsSync(path.join(staticPath, 'style.css')));
 }
 
-// 明确处理静态文件路由，避免被其他路由拦截
-app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (req, res) => {
-  // 移除路径开头的斜杠（如果有）
+// 通用静态文件服务 - 必须在所有路由之前
+// 在 Vercel 上，优先使用 express.static
+app.use(express.static(staticPath, {
+  dotfiles: 'ignore',
+  etag: true,
+  maxAge: '1d',
+  index: false // 不自动提供 index.html
+}));
+
+// 明确处理静态文件路由（作为后备，处理 express.static 未匹配的情况）
+app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/, (req, res, next) => {
+  // 移除路径开头的斜杠
   const cleanPath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
   const ext = path.extname(req.path).toLowerCase();
   
@@ -65,53 +74,31 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (re
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
   } else if (ext === '.js') {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  } else if (ext === '.html') {
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
   }
   
-  // 尝试多个可能的路径（包括带斜杠和不带斜杠的）
+  // 尝试多个可能的路径
   const possiblePaths = [
     path.join(staticPath, cleanPath),
     path.join(__dirname, cleanPath),
     path.join(process.cwd(), cleanPath),
     path.join('/var/task', cleanPath),
-    // 也尝试原始路径（带斜杠）
-    path.join(staticPath, req.path),
-    path.join(__dirname, req.path),
-    path.join(process.cwd(), req.path),
-    path.join('/var/task', req.path),
   ];
   
-  let fileFound = false;
   for (const filePath of possiblePaths) {
     try {
       if (fs.existsSync(filePath)) {
-        console.log('✅ Serving file:', req.path, 'from', filePath);
-        res.sendFile(filePath);
-        fileFound = true;
-        break;
+        console.log('✅ Serving static file:', req.path, 'from', filePath);
+        return res.sendFile(filePath);
       }
     } catch (e) {
       // 继续尝试下一个路径
     }
   }
   
-  if (!fileFound) {
-    console.error('❌ File not found:', req.path);
-    console.error('   Tried paths:', possiblePaths);
-    console.error('   Static path:', staticPath);
-    console.error('   __dirname:', __dirname);
-    console.error('   process.cwd():', process.cwd());
-    res.status(404).json({ error: 'File not found', path: req.path });
-  }
+  // 如果都没找到，继续下一个中间件（让 express.static 再试一次）
+  console.error('❌ Static file not found:', req.path);
+  next();
 });
-
-// 通用静态文件服务（作为后备）
-app.use(express.static(staticPath, {
-  dotfiles: 'ignore',
-  etag: true,
-  maxAge: '1d'
-}));
 
 // DeepSeek API配置
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-e8312e0eae874f2f9122f6aa334f4b3f';
