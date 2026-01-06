@@ -87,7 +87,7 @@ app.get(/\.(css|js|json|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$/, (re
     try {
       if (fs.existsSync(filePath)) {
         console.log('✅ Serving file:', req.path, 'from', filePath);
-        res.sendFile(filePath, { root: '/' });
+        res.sendFile(filePath);
         fileFound = true;
         break;
       }
