@@ -4100,18 +4100,7 @@ function renderSkillLibrary(cat) {
 }
 
 // 添加 MCP 工作流技能
-function addMCPWorkflowSkill(workflowId, clientId) {
-    // 将 MCP 工作流作为技能添加到员工
-    const skill = {
-        id: workflowId,
-        name: workflowId,
-        type: 'mcp_workflow',
-        mcpClientId: clientId
-    };
-    
-    addToolSkill(workflowId);
-    showToast('已添加 MCP 工作流技能');
-}
+// 重复定义已移除 - addMCPWorkflowSkill 在上方已定义
 
 // Helper to get tools from current UI state
 function getCurrentlyEditingTools() {
@@ -5534,7 +5523,7 @@ function switchValueMode(mode) {
 
 // 初始化价值指标监听器
 function initValueMetricsListeners() {
-    const weightInputs = ['kpi-response-weight', 'kpi-complete-weight', 'kpi-collab-weight', 'kpi-ability-weight'];
+    const weightInputs = ['kpi-response-weight', 'kpi-complete-weight', 'kpi-collab-weight'];
     weightInputs.forEach(id => {
         const input = document.getElementById(id);
         if (input) {
@@ -5550,8 +5539,7 @@ function updateKPIWeightTotal() {
     const weights = [
         parseInt(document.getElementById('kpi-response-weight')?.value || 0),
         parseInt(document.getElementById('kpi-complete-weight')?.value || 0),
-        parseInt(document.getElementById('kpi-collab-weight')?.value || 0),
-        parseInt(document.getElementById('kpi-ability-weight')?.value || 0)
+        parseInt(document.getElementById('kpi-collab-weight')?.value || 0)
     ];
     const total = weights.reduce((a, b) => a + b, 0);
     const totalEl = document.getElementById('kpi-weight-total');
@@ -5759,7 +5747,7 @@ function loadValueMetricsConfig(config) {
     const okrList = document.getElementById('okr-objectives-list');
     if (okrList && config.okrObjectives) {
         okrList.innerHTML = '';
-        okrObjectiveCount = 0;
+        let okrObjectiveCount = 0;
         config.okrObjectives.forEach((obj, idx) => {
             okrObjectiveCount++;
             const colors = ['#ff3b30', '#007AFF', '#34C759', '#FF9500'];
