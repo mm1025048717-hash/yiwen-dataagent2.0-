@@ -336,12 +336,115 @@ app.get('/api/chat/history/:conversationId', (req, res) => {
   });
 });
 
+// ==========================================
+// MCP (Model Context Protocol) 服务路由
+// ==========================================
+const mcpServer = require('./mcp-server');
+
+// 注册 MCP 客户端
+app.post('/api/mcp/register', (req, res) => {
+  try {
+    const { clientId, config } = req.body;
+    
+    if (!clientId || !config) {
+      return res.status(400).json({ error: '缺少必要参数: clientId, config' });
+    }
+
+    const client = mcpServer.registerMCPClient(clientId, config);
+    res.json({ success: true, client });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 列出所有已注册的 MCP 客户端
+app.get('/api/mcp/clients', (req, res) => {
+  const clients = Array.from(mcpServer.mcpClients.values()).map(client => ({
+    id: client.id,
+    name: client.name,
+    type: client.type,
+    capabilities: client.capabilities
+  }));
+  res.json({ clients });
+});
+
+// 发现 MCP 工具
+app.get('/api/mcp/:clientId/tools', async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const tools = await mcpServer.discoverMCPTools(clientId);
+    res.json({ tools });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 发现 MCP 工作流
+app.get('/api/mcp/:clientId/workflows', async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const workflows = await mcpServer.discoverMCPWorkflows(clientId);
+    res.json({ workflows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 执行 MCP 工具
+app.post('/api/mcp/:clientId/tools/:toolId/execute', async (req, res) => {
+  try {
+    const { clientId, toolId } = req.params;
+    const { parameters } = req.body;
+    
+    const result = await mcpServer.executeMCPTool(clientId, toolId, parameters || {});
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 执行 MCP 工作流
+app.post('/api/mcp/:clientId/workflows/:workflowId/execute', async (req, res) => {
+  try {
+    const { clientId, workflowId } = req.params;
+    const { input } = req.body;
+    
+    const result = await mcpServer.executeMCPWorkflow(clientId, workflowId, input || {});
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 获取 MCP 客户端详情
+app.get('/api/mcp/:clientId', (req, res) => {
+  const client = mcpServer.mcpClients.get(req.params.clientId);
+  if (!client) {
+    return res.status(404).json({ error: 'MCP 客户端未找到' });
+  }
+  
+  // 不返回敏感信息（如 API Key）
+  const { apiKey, ...safeClient } = client;
+  res.json({ client: safeClient });
+});
+
+// 删除 MCP 客户端
+app.delete('/api/mcp/:clientId', (req, res) => {
+  const deleted = mcpServer.mcpClients.delete(req.params.clientId);
+  if (deleted) {
+    res.json({ success: true, message: 'MCP 客户端已删除' });
+  } else {
+    res.status(404).json({ error: 'MCP 客户端未找到' });
+  }
+});
+
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    apiKeyConfigured: !!DEEPSEEK_API_KEY
+    apiKeyConfigured: !!DEEPSEEK_API_KEY,
+    mcpClients: mcpServer.mcpClients.size
   });
 });
 

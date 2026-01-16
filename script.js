@@ -3004,6 +3004,18 @@ const workflowTemplates = [
             { type: 'knowledge', x: 560, y: 200 },
             { type: 'end', x: 820, y: 40 }
         ]
+    },
+    {
+        id: 'profit_analysis',
+        name: '利润分析工作流',
+        desc: '数据提取 → 利润计算 → 趋势分析 → 报表生成',
+        nodes: [
+            { type: 'start', x: 80, y: 60 },
+            { type: 'code', x: 320, y: 40 },
+            { type: 'llm', x: 560, y: 40 },
+            { type: 'code', x: 560, y: 200 },
+            { type: 'end', x: 820, y: 120 }
+        ]
     }
 ];
 
@@ -3025,6 +3037,7 @@ const defaultKnowledgeLibrary = [
         fileCount: 6,
         size: '8.4MB',
         tags: ['GMV', '运营策略'],
+        valueAttr: '办结率',
         status: 'ready',
         updatedAt: Date.now() - 1000 * 60 * 60 * 3,
         files: [
@@ -3041,6 +3054,7 @@ const defaultKnowledgeLibrary = [
         fileCount: 12,
         size: '4.9MB',
         tags: ['FAQ', '客服'],
+        valueAttr: '准确率',
         status: 'ready',
         updatedAt: Date.now() - 1000 * 60 * 60 * 24,
         files: [
@@ -3056,6 +3070,7 @@ const defaultKnowledgeLibrary = [
         fileCount: 3,
         size: '2.1MB',
         tags: ['财务', '口径'],
+        valueAttr: '办结率',
         status: 'syncing',
         updatedAt: Date.now() - 1000 * 60 * 15,
         files: [
@@ -3146,6 +3161,7 @@ function renderLinkedKnowledgeList() {
                             <span>${formatKnowledgeTime(kb.updatedAt)}</span>
                         </div>
                         <div class="knowledge-tags">
+                            ${kb.valueAttr ? `<span class="knowledge-tag" style="background: #E5EAFE; color: #007AFF; border: none;"><i class="fas fa-chart-line" style="margin-right: 4px;"></i>${kb.valueAttr}</span>` : ''}
                             ${(kb.tags || []).map(tag => `<span class="knowledge-tag">${tag}</span>`).join('')}
                         </div>
                     </div>
@@ -3200,6 +3216,7 @@ function renderKnowledgeLibraryList(keyword = '') {
                     <span>${formatKnowledgeTime(kb.updatedAt)}</span>
                 </div>
                 <div class="knowledge-tags">
+                    ${kb.valueAttr ? `<span class="knowledge-tag" style="background: #E5EAFE; color: #007AFF; border: none;"><i class="fas fa-chart-line" style="margin-right: 4px;"></i>${kb.valueAttr}</span>` : ''}
                     ${(kb.tags || []).map(tag => `<span class="knowledge-tag">${tag}</span>`).join('')}
                 </div>
                 <button type="button" class="p-button ${linked ? 'p-button-outlined' : ''}" ${disabled ? 'disabled' : ''} onclick="toggleKnowledgeSelection('${kb.id}')">
@@ -3417,8 +3434,103 @@ function formatKnowledgeStatus(status) {
 }
 
 
+// 渲染部门专家矩阵 (现在在模板库中展示)
+function renderDepartmentExperts() {
+    const grid = document.getElementById('expert-matrix-grid');
+    if (!grid) return;
+
+    const experts = [
+        { type: 'supply_chain', template: departmentExpertTemplates.supply_chain },
+        { type: 'profit', template: departmentExpertTemplates.profit },
+        { type: 'sales', template: departmentExpertTemplates.sales }
+    ];
+
+    grid.innerHTML = experts.map(({ type, template }, index) => {
+        const existing = employees.find(e => e.username === template.username);
+        const isCreated = !!existing;
+        const isEnabled = existing?.enabled || false;
+
+        return `
+            <div class="template-card" onclick="quickCreateDepartmentExpert('${type}')" style="background: #fff; border: 1px solid ${isCreated ? template.color : '#e5e7eb'}; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 12px; position: relative;">
+                ${isCreated ? `
+                    <div style="position: absolute; top: 12px; right: 12px; padding: 2px 8px; background: ${isEnabled ? '#10b981' : '#6b7280'}; color: white; border-radius: 10px; font-size: 10px;">
+                        ${isEnabled ? '已启用' : '已创建'}
+                    </div>
+                ` : ''}
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 48px; height: 48px; background: ${template.color}15; color: ${template.color}; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                        <i class="${template.icon}"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px; color: #1f2937;">${template.nickname}</div>
+                        <div style="font-size: 12px; color: #6b7280;">${template.position}</div>
+                    </div>
+                </div>
+                <div style="font-size: 13px; color: #4b5563; line-height: 1.5; flex: 1;">
+                    ${template.desc}
+                </div>
+                <div style="margin-top: auto; padding-top: 12px; border-top: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; color: #0284c7; background: #f0f9ff; padding: 2px 8px; border-radius: 4px;">
+                        <i class="fas fa-cogs"></i> 双引擎架构
+                    </span>
+                    <button class="p-button p-button-text" style="padding: 4px 8px; font-size: 13px;">
+                        ${isCreated ? '管理专家' : '立即创建'} <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 模板库分类切换
+function switchTemplateTab(tab) {
+    const featuredGrid = document.getElementById('template-grid');
+    const departmentGrid = document.getElementById('expert-matrix-grid');
+    const tabFeatured = document.getElementById('tab-featured');
+    const tabDepartment = document.getElementById('tab-department');
+    
+    if (tab === 'featured') {
+        featuredGrid.classList.remove('hidden');
+        departmentGrid.classList.add('hidden');
+        
+        tabFeatured.style.color = 'var(--primary-color)';
+        tabFeatured.style.borderBottom = '2px solid var(--primary-color)';
+        tabDepartment.style.color = 'var(--text-secondary)';
+        tabDepartment.style.borderBottom = 'none';
+    } else {
+        featuredGrid.classList.add('hidden');
+        departmentGrid.classList.remove('hidden');
+        
+        renderDepartmentExperts(); // 切换到该页签时渲染
+        
+        tabDepartment.style.color = 'var(--primary-color)';
+        tabDepartment.style.borderBottom = '2px solid var(--primary-color)';
+        tabFeatured.style.color = 'var(--text-secondary)';
+        tabFeatured.style.borderBottom = 'none';
+    }
+}
+
+// 切换专家卡片展开/收起
+function toggleExpertCard(expertType) {
+    const card = document.querySelector(`.expert-card[data-expert-type="${expertType}"]`);
+    if (!card) return;
+    
+    const isExpanded = card.classList.contains('expanded');
+    
+    // 关闭所有卡片
+    document.querySelectorAll('.expert-card').forEach(c => c.classList.remove('expanded'));
+    
+    // 如果当前卡片未展开，则展开它
+    if (!isExpanded) {
+        card.classList.add('expanded');
+    }
+}
+
 function renderEmployeeList(keyword = '') {
     updateQuotaDisplay();
+    
+    // 渲染部门专家矩阵
+    renderDepartmentExperts();
     
     const tbody = document.getElementById('employee-table-body');
     if (!tbody) return;
@@ -3434,7 +3546,7 @@ function renderEmployeeList(keyword = '') {
     });
 
     tbody.innerHTML = filtered.map(emp => `
-        <tr>
+        <tr style="cursor: pointer;" onclick="openPerformanceDashboard(${emp.id})">
             <td>
                 <div class="emp-profile-cell">
                     <div class="emp-avatar-wrapper">
@@ -3447,9 +3559,17 @@ function renderEmployeeList(keyword = '') {
                 </div>
             </td>
             <td><span style="font-family: monospace; color: var(--text-secondary); background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">@${emp.username}</span></td>
-            <td><span class="p-tag p-tag-info" style="font-weight: 500;">${emp.model || 'DeepSeek'}</span></td>
+            <td><span class="p-tag p-tag-info" style="font-weight: 500; background: #E5EAFE; color: #007AFF; border: none; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${emp.model || 'DeepSeek'}</span></td>
             <td>
-                <div class="form-check form-switch" style="transform: scale(0.8); transform-origin: left center;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #1d1d1f;">87.5</div>
+                    <div style="height: 3px; background: #F2F2F7; border-radius: 2px; width: 44px; overflow: hidden;">
+                        <div style="width: 87%; height: 100%; background: #007AFF;"></div>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="form-check form-switch" style="transform: scale(0.8); transform-origin: left center;" onclick="event.stopPropagation()">
                     <label class="switch">
                         <input type="checkbox" ${emp.enabled ? 'checked' : ''} onchange="toggleEmployeeStatus(${emp.id})">
                         <span class="slider round"></span>
@@ -3457,8 +3577,8 @@ function renderEmployeeList(keyword = '') {
                 </div>
             </td>
             <td style="text-align: right;">
-                <button class="p-button p-button-text" onclick="openEmployeeBuilder(${emp.id})" style="color:var(--text-secondary); width: 32px; height: 32px; padding: 0;" title="编辑"><i class="fas fa-cog"></i></button>
-                <button class="p-button p-button-text" onclick="deleteEmployee(${emp.id})" style="color:#f43f5e; width: 32px; height: 32px; padding: 0;" title="删除"><i class="fas fa-trash-alt"></i></button>
+                <button class="p-button p-button-text" onclick="event.stopPropagation(); openEmployeeBuilder(${emp.id})" style="color: #86868b; width: 32px; height: 32px; padding: 0;" title="设置"><i class="fas fa-cog"></i></button>
+                <button class="p-button p-button-text" onclick="event.stopPropagation(); deleteEmployee(${emp.id})" style="color: #FF3B30; width: 32px; height: 32px; padding: 0;" title="删除"><i class="fas fa-trash-alt"></i></button>
             </td>
         </tr>
     `).join('');
@@ -3566,13 +3686,289 @@ const skillRegistry = [
         desc: '调用 DALL-E 或 Midjourney 生成配图。',
         icon: 'fas fa-image',
         color: '#ec4899'
+    },
+    // MCP 相关技能
+    {
+        id: 'mcp_hiagent',
+        category: 'external',
+        name: 'HiAgent 连接',
+        desc: '通过 MCP 协议连接 HiAgent 平台，使用其提供的工具和工作流能力。',
+        icon: 'fas fa-link',
+        color: '#3b82f6',
+        type: 'mcp_client',
+        mcpType: 'hiagent'
+    },
+    {
+        id: 'mcp_zhiban',
+        category: 'external',
+        name: '智办助手连接',
+        desc: '通过 MCP 协议连接智办助手平台，复用其智能体能力。',
+        icon: 'fas fa-robot',
+        color: '#8b5cf6',
+        type: 'mcp_client',
+        mcpType: 'zhiban'
+    },
+    {
+        id: 'mcp_custom',
+        category: 'external',
+        name: '自定义 MCP 服务',
+        desc: '连接自定义 MCP 服务，接入外部智能体能力、知识库和工作流平台。',
+        icon: 'fas fa-server',
+        color: '#10b981',
+        type: 'mcp_client',
+        mcpType: 'custom'
+    },
+    {
+        id: 'profit_analysis',
+        category: 'workflow',
+        name: '利润分析工作流',
+        desc: '数据提取 → 利润计算 → 趋势分析 → 报表生成',
+        icon: 'fas fa-chart-line',
+        color: '#10b981',
+        type: 'workflow'
     }
 ];
+
+// MCP 客户端配置存储
+const mcpClientConfigs = new Map();
+
+// 从 MCP 客户端获取的技能和工作流（动态加载）
+const mcpSkills = new Map(); // clientId -> [skills]
+const mcpWorkflows = new Map(); // clientId -> [workflows]
 
 function openSkillLibrary() {
     const modal = document.getElementById('skill-library-modal');
     renderSkillLibrary('all');
     modal.classList.add('active');
+    // 加载 MCP 技能
+    loadMCPSkills();
+}
+
+// 加载 MCP 技能（从已注册的 MCP 客户端）
+async function loadMCPSkills() {
+    try {
+        const response = await fetch('/api/mcp/clients');
+        const data = await response.json();
+        
+        if (data.clients && data.clients.length > 0) {
+            // 为每个客户端加载工具和工作流
+            for (const client of data.clients) {
+                await loadMCPClientSkills(client.id);
+            }
+        }
+    } catch (error) {
+        console.error('[MCP] 加载 MCP 技能失败:', error);
+    }
+}
+
+// 加载特定 MCP 客户端的技能
+async function loadMCPClientSkills(clientId) {
+    try {
+        // 加载工具
+        const toolsResponse = await fetch(`/api/mcp/${clientId}/tools`);
+        const toolsData = await toolsResponse.json();
+        if (toolsData.tools) {
+            mcpSkills.set(clientId, toolsData.tools);
+        }
+        
+        // 加载工作流（作为技能类型）
+        const workflowsResponse = await fetch(`/api/mcp/${clientId}/workflows`);
+        const workflowsData = await workflowsResponse.json();
+        if (workflowsData.workflows) {
+            // 将工作流转换为技能格式
+            const workflowSkills = workflowsData.workflows.map(wf => ({
+                id: wf.id,
+                name: wf.name,
+                desc: wf.description,
+                category: 'workflow',
+                icon: 'fas fa-diagram-project',
+                color: '#2563eb',
+                type: 'workflow',
+                source: wf.source,
+                sourceId: wf.sourceId,
+                mcpClientId: clientId
+            }));
+            
+            // 合并到技能列表
+            const existing = mcpSkills.get(clientId) || [];
+            mcpSkills.set(clientId, [...existing, ...workflowSkills]);
+            
+            // 同时存储到工作流映射
+            mcpWorkflows.set(clientId, workflowsData.workflows);
+        }
+    } catch (error) {
+        console.error(`[MCP] 加载客户端技能失败 (${clientId}):`, error);
+    }
+}
+
+// 打开 MCP 客户端配置
+function openMCPClientConfig(skillId) {
+    const skill = skillRegistry.find(s => s.id === skillId);
+    if (!skill || skill.type !== 'mcp_client') return;
+    
+    // 创建配置模态框
+    const modal = document.createElement('div');
+    modal.className = 'drawer-overlay';
+    modal.id = 'mcp-config-modal';
+    modal.style.cssText = 'display: flex; justify-content: center; align-items: center; z-index: 10000;';
+    
+    const existingConfig = mcpClientConfigs.get(skillId);
+    
+    modal.innerHTML = `
+        <div class="drawer-panel" style="width: 600px; max-width: 90vw;">
+            <div class="drawer-header">
+                <span class="drawer-title">配置 ${skill.name}</span>
+                <i class="fas fa-times" style="cursor: pointer;" onclick="closeMCPConfig()"></i>
+            </div>
+            <div class="drawer-body" style="padding: 24px;">
+                <div class="field" style="margin-bottom: 16px;">
+                    <label>客户端 ID *</label>
+                    <input type="text" class="p-inputtext" id="mcp-client-id" 
+                        value="${existingConfig?.clientId || skillId}" placeholder="唯一标识符">
+                </div>
+                <div class="field" style="margin-bottom: 16px;">
+                    <label>服务名称</label>
+                    <input type="text" class="p-inputtext" id="mcp-client-name" 
+                        value="${existingConfig?.name || skill.name}" placeholder="显示名称">
+                </div>
+                <div class="field" style="margin-bottom: 16px;">
+                    <label>服务地址 (Base URL) *</label>
+                    <input type="text" class="p-inputtext" id="mcp-base-url" 
+                        value="${existingConfig?.baseUrl || ''}" 
+                        placeholder="https://api.hiagent.com">
+                </div>
+                <div class="field" style="margin-bottom: 16px;">
+                    <label>API Key *</label>
+                    <input type="password" class="p-inputtext" id="mcp-api-key" 
+                        value="${existingConfig?.apiKey || ''}" placeholder="API 密钥">
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button class="p-button p-button-outlined" onclick="testMCPConnection()" style="flex: 1;">
+                        <i class="fas fa-plug"></i> 测试连接
+                    </button>
+                    <button class="p-button" onclick="saveMCPConfig('${skillId}')" style="flex: 1;">
+                        <i class="fas fa-save"></i> 保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.classList.add('active');
+}
+
+// 关闭 MCP 配置
+function closeMCPConfig() {
+    const modal = document.getElementById('mcp-config-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// 测试 MCP 连接
+async function testMCPConnection() {
+    const clientId = document.getElementById('mcp-client-id').value;
+    const baseUrl = document.getElementById('mcp-base-url').value;
+    const apiKey = document.getElementById('mcp-api-key').value;
+    
+    if (!clientId || !baseUrl || !apiKey) {
+        showToast('请填写完整配置信息', 'error');
+        return;
+    }
+    
+    try {
+        // 先注册客户端
+        const registerResponse = await fetch('/api/mcp/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId: clientId,
+                config: {
+                    name: document.getElementById('mcp-client-name').value || clientId,
+                    type: 'hiagent', // 可以根据配置选择
+                    baseUrl: baseUrl,
+                    apiKey: apiKey
+                }
+            })
+        });
+        
+        if (!registerResponse.ok) {
+            throw new Error('注册失败');
+        }
+        
+        // 测试连接（通过获取工具列表）
+        const toolsResponse = await fetch(`/api/mcp/${clientId}/tools`);
+        if (toolsResponse.ok) {
+            showToast('连接成功！已发现可用工具和工作流', 'success');
+            // 重新加载技能库
+            await loadMCPClientSkills(clientId);
+            renderSkillLibrary(document.querySelector('.skill-cat-item.active')?.dataset?.cat || 'all');
+        } else {
+            throw new Error('连接测试失败');
+        }
+    } catch (error) {
+        showToast(`连接失败: ${error.message}`, 'error');
+    }
+}
+
+// 保存 MCP 配置
+async function saveMCPConfig(skillId) {
+    const clientId = document.getElementById('mcp-client-id').value;
+    const name = document.getElementById('mcp-client-name').value;
+    const baseUrl = document.getElementById('mcp-base-url').value;
+    const apiKey = document.getElementById('mcp-api-key').value;
+    
+    if (!clientId || !baseUrl || !apiKey) {
+        showToast('请填写完整配置信息', 'error');
+        return;
+    }
+    
+    const config = {
+        clientId,
+        name,
+        baseUrl,
+        apiKey,
+        skillId
+    };
+    
+    mcpClientConfigs.set(skillId, config);
+    
+    try {
+        // 注册到服务器
+        const response = await fetch('/api/mcp/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId: clientId,
+                config: {
+                    name: name,
+                    type: 'hiagent', // 可以根据 skillId 判断类型
+                    baseUrl: baseUrl,
+                    apiKey: apiKey
+                }
+            })
+        });
+        
+        if (response.ok) {
+            showToast('配置已保存', 'success');
+            closeMCPConfig();
+            // 重新加载技能
+            await loadMCPClientSkills(clientId);
+            renderSkillLibrary(document.querySelector('.skill-cat-item.active')?.dataset?.cat || 'all');
+        } else {
+            throw new Error('保存失败');
+        }
+    } catch (error) {
+        showToast(`保存失败: ${error.message}`, 'error');
+    }
+}
+
+// 添加 MCP 工作流技能
+function addMCPWorkflowSkill(workflowId, clientId) {
+    // 将 MCP 工作流作为技能添加到员工
+    addToolSkill(workflowId);
+    showToast('已添加 MCP 工作流技能');
 }
 
 function filterSkillCat(cat, el) {
@@ -3586,48 +3982,135 @@ function renderSkillLibrary(cat) {
     if (!grid) return;
     
     if (cat === 'workflow') {
-        grid.innerHTML = workflowTemplates.map(tpl => `
+        // 合并本地工作流模板和 MCP 工作流（作为技能）
+        const allWorkflows = [];
+        
+        // 本地工作流模板
+        workflowTemplates.forEach(tpl => {
+            allWorkflows.push({
+                id: tpl.id,
+                name: tpl.name,
+                desc: tpl.desc,
+                type: 'workflow',
+                source: 'local',
+                isTemplate: true
+            });
+        });
+        
+        // MCP 工作流（从所有客户端）
+        mcpWorkflows.forEach((workflows, clientId) => {
+            workflows.forEach(wf => {
+                allWorkflows.push({
+                    id: wf.id,
+                    name: wf.name,
+                    desc: wf.description,
+                    type: 'workflow',
+                    source: wf.source,
+                    mcpClientId: clientId,
+                    isTemplate: false
+                });
+            });
+        });
+        
+        // 从 MCP 技能中提取工作流类型技能
+        mcpSkills.forEach((skills, clientId) => {
+            skills.filter(s => s.type === 'workflow').forEach(skill => {
+                allWorkflows.push({
+                    id: skill.id,
+                    name: skill.name,
+                    desc: skill.desc,
+                    type: 'workflow',
+                    source: skill.source,
+                    mcpClientId: clientId,
+                    isTemplate: false
+                });
+            });
+        });
+        
+        grid.innerHTML = allWorkflows.map(wf => {
+            const isTemplate = wf.isTemplate;
+            const sourceBadge = wf.source !== 'local' ? `<span style="font-size: 10px; color: #6b7280; margin-left: 6px;">[${wf.source}]</span>` : '';
+            
+            return `
             <div class="skill-lib-card workflow-template-card">
                 <div class="skill-lib-icon" style="background: rgba(37,99,235,0.1); color: #1d4ed8;">
                     <i class="fas fa-diagram-project"></i>
                 </div>
                 <div class="skill-lib-content">
-                    <div class="skill-lib-name">${tpl.name}</div>
-                    <div class="skill-lib-desc">${tpl.desc}</div>
+                    <div class="skill-lib-name">${wf.name}${sourceBadge}</div>
+                    <div class="skill-lib-desc">${wf.desc}</div>
                 </div>
                 <button class="p-button" style="padding: 6px 16px; font-size: 13px; border-radius: 20px; height: 32px;"
-                    onclick="useWorkflowTemplate('${tpl.id}', 'skill-center')">
-                    <i class="fas fa-play-circle"></i> 使用模板
+                    onclick="${isTemplate ? `useWorkflowTemplate('${wf.id}', 'skill-center')` : `addMCPWorkflowSkill('${wf.id}', '${wf.mcpClientId || ''}')`}">
+                    <i class="fas fa-play-circle"></i> ${isTemplate ? '使用模板' : '添加技能'}
                 </button>
             </div>
-        `).join('');
+        `;
+        }).join('');
         return;
     }
     
-    const filtered = cat === 'all' ? skillRegistry : skillRegistry.filter(s => s.category === cat);
+    // 合并本地技能和 MCP 技能
+    let allSkills = cat === 'all' ? [...skillRegistry] : skillRegistry.filter(s => s.category === cat);
+    
+    // 添加 MCP 工具技能
+    mcpSkills.forEach((skills, clientId) => {
+        const mcpTools = skills.filter(s => s.type === 'tool' || !s.type);
+        mcpTools.forEach(tool => {
+            allSkills.push({
+                id: tool.id,
+                name: tool.name,
+                desc: tool.description,
+                category: tool.category || 'external',
+                icon: 'fas fa-puzzle-piece',
+                color: '#6366f1',
+                type: 'mcp_tool',
+                mcpClientId: clientId,
+                source: tool.source
+            });
+        });
+    });
     
     // Get currently added skills to disable button
     const currentTools = getCurrentlyEditingTools();
 
-    grid.innerHTML = filtered.map(skill => {
+    grid.innerHTML = allSkills.map(skill => {
         const isAdded = currentTools.has(skill.id);
+        const sourceBadge = skill.source ? `<span style="font-size: 10px; color: #6b7280; margin-left: 6px;">[${skill.source}]</span>` : '';
+        const mcpBadge = skill.type === 'mcp_client' || skill.type === 'mcp_tool' ? '<span style="font-size: 10px; background: #e0e7ff; color: #4338ca; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">MCP</span>' : '';
+        
         return `
         <div class="skill-lib-card">
             <div class="skill-lib-icon" style="background: ${skill.color}15; color: ${skill.color};">
                 <i class="${skill.icon}"></i>
             </div>
             <div class="skill-lib-content">
-                <div class="skill-lib-name">${skill.name}</div>
+                <div class="skill-lib-name">${skill.name}${mcpBadge}${sourceBadge}</div>
                 <div class="skill-lib-desc">${skill.desc}</div>
             </div>
             <button class="p-button ${isAdded ? 'p-button-outlined' : 'p-button-primary'}" 
                 style="padding: 6px 16px; font-size: 13px; border-radius: 20px; height: 32px; white-space: nowrap;" 
-                onclick="addToolSkill('${skill.id}')" 
-                ${isAdded ? 'disabled' : ''}>
-                ${isAdded ? '<i class="fas fa-check"></i> 已添加' : '<i class="fas fa-plus"></i> 添加'}
+                onclick="${skill.type === 'mcp_client' ? `openMCPClientConfig('${skill.id}')` : `addToolSkill('${skill.id}')`}" 
+                ${isAdded && skill.type !== 'mcp_client' ? 'disabled' : ''}>
+                ${skill.type === 'mcp_client' ? '<i class="fas fa-cog"></i> 配置' : (isAdded ? '<i class="fas fa-check"></i> 已添加' : '<i class="fas fa-plus"></i> 添加')}
             </button>
         </div>
-    `}).join('');
+    `;
+    }).join('');
+}
+
+// 添加 MCP 工作流技能
+function addMCPWorkflowSkill(workflowId, clientId) {
+    // 将 MCP 工作流作为技能添加到员工
+    const skill = {
+        id: workflowId,
+        name: workflowId,
+        type: 'mcp_workflow',
+        mcpClientId: clientId
+    };
+    
+    addToolSkill(workflowId);
+    showToast('已添加 MCP 工作流技能');
 }
 
 // Helper to get tools from current UI state
@@ -4208,6 +4691,7 @@ function openEmployeeBuilder(empId = null, templateConfig = null) {
     const username = document.getElementById('emp-username');
     const nickname = document.getElementById('emp-nickname');
     const position = document.getElementById('emp-position');
+    const labels = document.getElementById('emp-labels');
     const desc = document.getElementById('emp-desc');
     const enabled = document.getElementById('emp-enabled');
     const model = document.getElementById('emp-llm-service');
@@ -4231,6 +4715,7 @@ function openEmployeeBuilder(empId = null, templateConfig = null) {
             username.value = emp.username;
             nickname.value = emp.nickname;
             position.value = emp.position || '';
+            if (labels) labels.value = emp.labels || '';
             desc.value = emp.desc || '';
             enabled.checked = emp.enabled;
             model.value = emp.model || 'deepseek-chat';
@@ -4254,6 +4739,9 @@ function openEmployeeBuilder(empId = null, templateConfig = null) {
             // Load Tools
             renderEmployeeTools(emp.tools || []);
 
+            // Load Value Metrics
+            loadValueMetricsConfig(emp.valueMetrics);
+
             // Load Data Scopes
             renderDataScopeSelection(emp.allowedSchemas || []);
         }
@@ -4263,18 +4751,19 @@ function openEmployeeBuilder(empId = null, templateConfig = null) {
         // Defaults or Template
         const config = templateConfig || {};
         
-        username.value = ''; // User still needs to set unique ID
+        username.value = config.username || ''; 
         nickname.value = config.nickname || '';
         position.value = config.position || '';
-        desc.value = '';
-        enabled.checked = true;
+        if (labels) labels.value = config.labels || '';
+        desc.value = config.desc || '';
+        enabled.checked = config.enabled !== undefined ? config.enabled : true;
         model.value = config.model || 'deepseek-chat';
         prompt.value = config.prompt || '';
         welcome.value = config.welcome || '';
         quickPromptsEl.value = config.quickPrompts ? formatQuickPrompts(config.quickPrompts) : '';
         
-        selectedAvatar = avatarOptions[Math.floor(Math.random() * avatarOptions.length)];
-        editingKnowledgeSet = new Set();
+        selectedAvatar = config.avatar || avatarOptions[Math.floor(Math.random() * avatarOptions.length)];
+        editingKnowledgeSet = new Set(config.knowledgeIds || []);
         
         tempSlider.value = config.temperature !== undefined ? config.temperature : 0.7;
         tempVal.innerText = tempSlider.value;
@@ -4291,8 +4780,22 @@ function openEmployeeBuilder(empId = null, templateConfig = null) {
         
         renderDataScopeSelection(config.allowedSchemas || []);
         
+        // Load Value Metrics (Defaults or from template)
+        loadValueMetricsConfig(config.valueMetrics || {
+            mode: 'kpi',
+            kpiItems: [
+                { title: '基础响应价值', desc: '对应工作：客户咨询应答、内部流程指引', weight: 25, metrics: ['响应率', '平均耗时'] },
+                { title: '事务办结价值', desc: '对应工作：合同初审、报销单校验、数据统计', weight: 45, metrics: ['独立办结率', '处理准确率'] },
+                { title: '协作省心价值', desc: '对应工作：异常转接处理、跨部门信息拉通', weight: 30, metrics: ['转接降低率', '辅助成本节约'] }
+            ],
+            okrObjectives: [
+                { title: '提升分身复杂事务处理能力', krs: ['本月分身复杂事务推进率 ≥ 30%', '复杂事务处理准确率 ≥ 85%', '新增复杂事务知识库条目 ≥ 20 条'] },
+                { title: '降低分身转接率与本人辅助成本', krs: ['月度转接率 ≤ 15%', '本人辅助成本降低率 ≥ 25%', '客户对分身处理满意度 ≥ 90 分'] }
+            ]
+        });
+        
         if (templateConfig) {
-             showToast('已加载模板配置，请完善基本信息');
+             showToast('已加载模板配置，请检查并保存', 'success');
         }
     }
 
@@ -4580,6 +5083,7 @@ function saveEmployee() {
         
         // Basic Info
         const position = document.getElementById('emp-position')?.value.trim() || '';
+        const labels = document.getElementById('emp-labels')?.value.trim() || '';
         const desc = document.getElementById('emp-desc')?.value.trim() || '';
         const enabled = document.getElementById('emp-enabled')?.checked || false;
         const model = document.getElementById('emp-llm-service')?.value || 'deepseek-chat';
@@ -4588,6 +5092,15 @@ function saveEmployee() {
         const quickPromptsEl = document.getElementById('emp-quick-prompts');
         const quickPrompts = quickPromptsEl ? parseQuickPrompts(quickPromptsEl.value) : [];
         const knowledgeIds = Array.from(editingKnowledgeSet);
+
+        // Value Metrics
+        const kpiWeights = {
+            response: parseInt(document.getElementById('kpi-response-weight')?.value || 25),
+            complete: parseInt(document.getElementById('kpi-complete-weight')?.value || 45),
+            collab: parseInt(document.getElementById('kpi-collab-weight')?.value || 30)
+        };
+        const transferTrigger = document.getElementById('emp-transfer-trigger')?.value || '2_times';
+        const transferAttribution = document.getElementById('emp-transfer-attribution')?.value || 'contribution_prop';
 
         if (!username || !nickname) {
             showToast('请填写用户名和昵称', 'info');
@@ -4627,12 +5140,15 @@ function saveEmployee() {
             allowedSchemas.push(cb.value);
         });
 
+        const valueMetrics = getValueMetricsConfig();
+
         if (editingEmployeeId) {
             const emp = employees.find(e => e.id === editingEmployeeId);
             if (emp) {
                 emp.username = username;
                 emp.nickname = nickname;
                 emp.position = position;
+                emp.labels = labels;
                 emp.desc = desc;
                 emp.enabled = enabled;
                 emp.model = model;
@@ -4647,8 +5163,14 @@ function saveEmployee() {
                 emp.skills = skills;
                 emp.tools = tools;
                 emp.allowedSchemas = allowedSchemas;
+
+                // Value Metrics
+                emp.valueMetrics = valueMetrics;
+
+                // 价值闭环：记录能力演进 (如果是修改则视为一次迭代)
+                console.log(`[价值闭环] 记录能力迭代: 优化了分身配置与价值目标`);
             }
-            showToast('员工信息已更新');
+            showToast('员工信息已更新，价值量化引擎已同步');
         } else {
             const newId = Math.max(0, ...employees.map(e => e.id)) + 1;
             employees.unshift({
@@ -4656,6 +5178,7 @@ function saveEmployee() {
                 username,
                 nickname,
                 position,
+                labels,
                 desc,
                 enabled,
                 model,
@@ -4667,18 +5190,302 @@ function saveEmployee() {
                 temperature,
                 skills,
                 tools,
-                allowedSchemas
+                allowedSchemas,
+                valueMetrics
             });
-            showToast('新员工已创建');
+            // 价值闭环：初始绑定记录
+            console.log(`[价值闭环] 记录分身创建: 完成了初始价值绑定`);
+            showToast('分身创建成功，价值映射已生效');
         }
 
         renderEmployeeList();
         closeDrawer('employee-builder-drawer');
         
+        // 重新渲染部门专家矩阵（如果存在）
+        renderDepartmentExperts();
+        
     } catch (error) {
         console.error('Error saving employee:', error);
         showToast('保存失败: ' + error.message, 'error');
     }
+}
+
+// 部门专家模板配置
+const departmentExpertTemplates = {
+    supply_chain: {
+        username: 'supply_chain_expert',
+        nickname: '供应链专家',
+        position: '供应链分析师',
+        desc: '专业的供应链管理专家，能够实时监控库存水平、智能预测需求变化、优化采购流程。擅长库存管理、需求预测、供应商协调和成本优化。',
+        enabled: true,
+        model: 'deepseek-chat',
+        prompt: `你是一位资深的供应链管理专家，专门负责供应链优化和库存管理。
+
+你的核心职责：
+1. 实时监控库存水平和周转率
+2. 智能预测未来需求趋势
+3. 优化采购流程和供应商管理
+4. 降低库存成本，提高供应链效率
+
+你的工作风格：
+- 数据驱动，注重实时性
+- 善于发现供应链中的瓶颈和风险
+- 能够平衡库存成本和缺货风险
+- 关注供应商绩效和合作关系
+
+当你收到供应链相关的请求时，应该：
+1. 分析当前库存状况和趋势
+2. 预测未来需求变化
+3. 识别潜在的供应链风险
+4. 提供优化建议和行动方案
+
+记住：供应链管理的关键是平衡成本、效率和服务水平。`,
+        welcome: '你好，我是供应链专家。我可以帮你实时监控库存、预测需求、优化采购流程，确保供应链高效运转。请告诉我你需要什么帮助？',
+        quickPrompts: [
+            '查看当前库存状况',
+            '预测下月需求趋势',
+            '分析采购成本优化机会',
+            '识别供应链风险点',
+            '生成库存周转分析报告'
+        ],
+        temperature: 0.7,
+        skills: {
+            sql: true,
+            chart: true,
+            report: true,
+            python: false,
+            internet: false
+        },
+        tools: [],
+        allowedSchemas: ['inventory_dim', 'supply_chain_mart', 'purchase_mart'],
+        icon: 'fas fa-boxes',
+        color: '#3b82f6',
+        capabilities: [
+            { name: '实时监控库存', icon: 'fas fa-chart-line', desc: '动态库存水平图' },
+            { name: '智能预测需求', icon: 'fas fa-crystal-ball', desc: '预测曲线与实际对比' },
+            { name: '优化采购流程', icon: 'fas fa-sync-alt', desc: '采购流程图优化' }
+        ]
+    },
+    profit: {
+        username: 'profit_analyst',
+        nickname: '利润分析专家',
+        position: '财务分析师',
+        desc: '专业的利润分析专家，能够快速生成利润分析报表，帮助您洞察业务盈利情况。擅长分析收入、成本、利润率等关键财务指标，并提供深度的趋势分析和归因分析。',
+        enabled: true,
+        model: 'deepseek-chat',
+        prompt: `你是一位资深的财务分析专家，专门负责利润分析。
+
+你的核心职责：
+1. 分析收入、成本、利润等财务指标
+2. 识别利润变化趋势和关键驱动因素
+3. 生成专业的利润分析报表
+4. 提供数据驱动的业务建议
+
+你的工作风格：
+- 专业严谨，数据准确
+- 善于发现数据背后的业务逻辑
+- 能够用简洁明了的语言解释复杂的财务概念
+- 关注细节，但也能把握全局
+
+当你收到利润分析相关的请求时，应该：
+1. 首先理解用户的分析需求
+2. 提取相关的财务数据
+3. 进行多维度分析（时间维度、产品维度、区域维度等）
+4. 识别关键变化和异常
+5. 生成结构化的分析报告
+
+记住：始终以数据为支撑，以业务价值为导向。`,
+        welcome: '你好，我是利润分析专家。我可以帮你快速分析利润数据，生成专业的分析报表，并为你提供深度的业务洞察。请告诉我你想了解什么？',
+        quickPrompts: [
+            '生成本月利润分析报表',
+            '分析本月利润趋势',
+            '对比不同产品线的利润率',
+            '找出利润下降的主要原因',
+            '预测下季度利润情况'
+        ],
+        temperature: 0.7,
+        skills: {
+            sql: true,
+            chart: true,
+            report: true,
+            python: false,
+            internet: false
+        },
+        tools: ['profit_analysis'],
+        allowedSchemas: ['sales_mart', 'finance_mart', 'inventory_dim'],
+        icon: 'fas fa-chart-line',
+        color: '#10b981',
+        capabilities: [
+            { name: '利润趋势分析', icon: 'fas fa-chart-area', desc: '多维度利润趋势追踪' },
+            { name: '成本结构分析', icon: 'fas fa-pie-chart', desc: '成本构成可视化' },
+            { name: '盈利预测', icon: 'fas fa-project-diagram', desc: '基于历史数据预测' }
+        ]
+    },
+    sales: {
+        username: 'sales_expert',
+        nickname: '销售专家',
+        position: '销售分析师',
+        desc: '专业的销售分析专家，能够深入分析客户行为、准确预测市场趋势、制定增长策略。擅长客户分群、销售预测、市场洞察和增长策略制定。',
+        enabled: true,
+        model: 'deepseek-chat',
+        prompt: `你是一位资深的销售分析专家，专门负责销售增长和客户分析。
+
+你的核心职责：
+1. 深入分析客户行为模式和偏好
+2. 准确预测市场趋势和销售机会
+3. 制定数据驱动的增长策略
+4. 优化销售流程和客户体验
+
+你的工作风格：
+- 以客户为中心，关注用户体验
+- 善于发现市场机会和增长点
+- 能够将数据洞察转化为可执行的策略
+- 关注长期价值和客户关系
+
+当你收到销售相关的请求时，应该：
+1. 分析客户行为数据和分群特征
+2. 识别高价值客户和增长机会
+3. 预测市场趋势和销售潜力
+4. 提供针对性的增长策略建议
+
+记住：销售增长的核心是理解客户需求，创造价值。`,
+        welcome: '你好，我是销售专家。我可以帮你深入分析客户行为、预测市场趋势、制定增长策略，助力销售业绩提升。请告诉我你的需求？',
+        quickPrompts: [
+            '分析客户行为特征',
+            '预测下季度销售趋势',
+            '识别高价值客户群体',
+            '制定增长策略方案',
+            '生成销售分析报告'
+        ],
+        temperature: 0.8,
+        skills: {
+            sql: true,
+            chart: true,
+            report: true,
+            python: false,
+            internet: false
+        },
+        tools: [],
+        allowedSchemas: ['sales_mart', 'customer_mart', 'user_behavior'],
+        icon: 'fas fa-chart-bar',
+        color: '#f59e0b',
+        capabilities: [
+            { name: '客户行为分析', icon: 'fas fa-users', desc: '客户分群可视化' },
+            { name: '市场趋势预测', icon: 'fas fa-trending-up', desc: '市场趋势线预测' },
+            { name: '增长策略制定', icon: 'fas fa-lightbulb', desc: '增长策略脑图' }
+        ]
+    }
+};
+
+// 快速创建部门专家
+function quickCreateDepartmentExpert(expertType) {
+    const template = departmentExpertTemplates[expertType];
+    if (!template) {
+        showToast('专家模板不存在', 'error');
+        return;
+    }
+
+    // 检查配额
+    const enabledCount = employees.filter(e => e.enabled).length;
+    if (enabledCount >= MAX_EMPLOYEES) {
+        showToast(`已达到最大配额 (${MAX_EMPLOYEES})，请先禁用其他员工`, 'error');
+        return;
+    }
+
+    // 如果模板库开启，则关闭它
+    closeDrawer('template-library-modal');
+
+    // 检查是否已存在
+    const existing = employees.find(e => e.username === template.username);
+    if (existing) {
+        if (confirm(`${template.nickname}已存在，是否要重新配置？`)) {
+            editingEmployeeId = existing.id;
+        } else {
+            return;
+        }
+    } else {
+        editingEmployeeId = null;
+    }
+
+    // 显示创建进度动画
+    showCreationProgress(() => {
+        // 打开创建界面并填充数据
+        openEmployeeBuilder(editingEmployeeId, template);
+        
+        // 自动保存（延迟以确保所有字段都已填充）
+        setTimeout(() => {
+            saveEmployee();
+            showToast(`${template.nickname}创建成功！`, 'success');
+            // 重新渲染专家矩阵以更新状态
+            setTimeout(() => renderDepartmentExperts(), 100);
+        }, 800);
+    }, template.nickname);
+}
+
+// 快速创建利润分析专家（保持向后兼容）
+function quickCreateProfitAnalyst() {
+    quickCreateDepartmentExpert('profit');
+}
+
+// 显示创建进度动画
+function showCreationProgress(onComplete, expertName = 'AI 专家') {
+    // 创建进度遮罩层
+    const overlay = document.createElement('div');
+    overlay.id = 'creation-progress-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        color: white;
+    `;
+    
+    overlay.innerHTML = `
+        <div style="text-align: center; max-width: 400px;">
+            <div style="font-size: 24px; font-weight: 600; margin-bottom: 16px;">正在创建 ${expertName}...</div>
+            <div style="width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin: 0 auto 16px; overflow: hidden;">
+                <div id="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #34d399); transition: width 0.3s; border-radius: 4px;"></div>
+            </div>
+            <div id="progress-text" style="font-size: 14px; color: rgba(255,255,255,0.8);">初始化配置...</div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
+    // 模拟进度
+    const steps = [
+        { progress: 20, text: '配置基本信息...' },
+        { progress: 40, text: '设置专业技能...' },
+        { progress: 60, text: '装配工作流...' },
+        { progress: 80, text: '优化提示词...' },
+        { progress: 100, text: '创建完成！' }
+    ];
+    
+    let currentStep = 0;
+    const interval = setInterval(() => {
+        if (currentStep < steps.length) {
+            const step = steps[currentStep];
+            progressBar.style.width = step.progress + '%';
+            progressText.textContent = step.text;
+            currentStep++;
+        } else {
+            clearInterval(interval);
+            setTimeout(() => {
+                overlay.remove();
+                if (onComplete) onComplete();
+            }, 500);
+        }
+    }, 400); // 每400ms更新一次，总共约2秒
 }
 
 function switchEmployeeTab(tabName) {
@@ -4688,6 +5495,359 @@ function switchEmployeeTab(tabName) {
     document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
     const target = document.getElementById(`emp-tab-${tabName}`);
     if (target) target.classList.remove('hidden');
+    
+    // 切换到价值指标时初始化权重监听
+    if (tabName === 'value') {
+        initValueMetricsListeners();
+    }
+}
+
+// ==================== 价值指标与评价系统 ====================
+
+// 切换 KPI/OKR 模式
+function switchValueMode(mode) {
+    const kpiPanel = document.getElementById('value-kpi-panel');
+    const okrPanel = document.getElementById('value-okr-panel');
+    const kpiBtn = document.getElementById('value-mode-kpi');
+    const okrBtn = document.getElementById('value-mode-okr');
+    
+    if (mode === 'kpi') {
+        kpiPanel?.classList.remove('hidden');
+        okrPanel?.classList.add('hidden');
+        kpiBtn.style.background = '#fff';
+        kpiBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        kpiBtn.style.color = '#1d1d1f';
+        okrBtn.style.background = 'transparent';
+        okrBtn.style.boxShadow = 'none';
+        okrBtn.style.color = '#86868b';
+    } else {
+        kpiPanel?.classList.add('hidden');
+        okrPanel?.classList.remove('hidden');
+        okrBtn.style.background = '#fff';
+        okrBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        okrBtn.style.color = '#1d1d1f';
+        kpiBtn.style.background = 'transparent';
+        kpiBtn.style.boxShadow = 'none';
+        kpiBtn.style.color = '#86868b';
+    }
+}
+
+// 初始化价值指标监听器
+function initValueMetricsListeners() {
+    const weightInputs = ['kpi-response-weight', 'kpi-complete-weight', 'kpi-collab-weight', 'kpi-ability-weight'];
+    weightInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.removeEventListener('input', updateKPIWeightTotal);
+            input.addEventListener('input', updateKPIWeightTotal);
+        }
+    });
+    updateKPIWeightTotal();
+}
+
+// 更新 KPI 权重总和
+function updateKPIWeightTotal() {
+    const weights = [
+        parseInt(document.getElementById('kpi-response-weight')?.value || 0),
+        parseInt(document.getElementById('kpi-complete-weight')?.value || 0),
+        parseInt(document.getElementById('kpi-collab-weight')?.value || 0),
+        parseInt(document.getElementById('kpi-ability-weight')?.value || 0)
+    ];
+    const total = weights.reduce((a, b) => a + b, 0);
+    const totalEl = document.getElementById('kpi-weight-total');
+    if (totalEl) {
+        totalEl.textContent = total + '%';
+        totalEl.style.color = total === 100 ? '#22c55e' : (total > 100 ? '#ef4444' : '#3b82f6');
+    }
+}
+
+// 添加 KPI 指标
+function addKPIMetric(btn, bgColor, textColor) {
+    const container = btn.parentElement;
+    const newMetric = document.createElement('div');
+    newMetric.style.cssText = `display: flex; align-items: center; background: ${bgColor}; border-radius: 6px; padding: 4px 8px; gap: 4px;`;
+    newMetric.innerHTML = `
+        <input type="text" value="新指标" style="font-size: 11px; color: ${textColor}; border: none; background: transparent; width: 40px; text-align: center; padding: 0;">
+        <i class="fas fa-times" style="font-size: 9px; color: ${textColor}; cursor: pointer;" onclick="this.parentElement.remove()"></i>
+    `;
+    container.insertBefore(newMetric, btn);
+}
+
+// 添加 OKR 目标
+function addOKRObjective() {
+    const list = document.getElementById('okr-objectives-list');
+    if (!list) return;
+    
+    const count = list.querySelectorAll('.okr-objective-card').length + 1;
+    const colors = ['#ff3b30', '#007AFF', '#34C759', '#FF9500', '#5856D6', '#AF52DE'];
+    const color = colors[(count - 1) % colors.length];
+    
+    const newCard = document.createElement('div');
+    newCard.className = 'okr-objective-card';
+    newCard.style.cssText = 'background: #fff; border: 1px solid #F2F2F7; border-radius: 16px; padding: 20px;';
+    newCard.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <div style="width: 28px; height: 28px; background: #F2F2F7; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #1d1d1f;">O${count}</div>
+            <input type="text" class="p-inputtext" placeholder="输入目标描述..." style="flex: 1; font-weight: 600; font-size: 15px; border: none; padding: 4px; background: transparent;">
+            <button class="p-button p-button-text" style="color: #ff3b30; padding: 4px;" onclick="this.closest('.okr-objective-card').remove(); updateOKRNumbers()">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </div>
+        <div class="okr-key-results" style="padding-left: 40px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: ${color}; font-weight: 500; font-size: 12px;">KR1</span>
+                <input type="text" class="p-inputtext" style="flex: 1; font-size: 13px; border: none; padding: 4px; background: #F8F8FA; border-radius: 6px;" placeholder="输入关键结果...">
+            </div>
+            <button class="p-button p-button-text p-button-sm" onclick="addKRToObjective(this, '${color}')" style="align-self: flex-start; font-size: 11px; padding: 4px;">
+                <i class="fas fa-plus"></i> 添加 KR
+            </button>
+        </div>
+    `;
+    list.appendChild(newCard);
+}
+
+// 辅助函数：更新 OKR 编号
+function updateOKRNumbers() {
+    const list = document.getElementById('okr-objectives-list');
+    if (!list) return;
+    list.querySelectorAll('.okr-objective-card').forEach((card, idx) => {
+        const oNum = card.querySelector('div > div:first-child');
+        if (oNum) oNum.textContent = `O${idx + 1}`;
+    });
+}
+
+// 为目标添加关键结果
+function addKRToObjective(btn, color) {
+    const container = btn.parentElement;
+    const krCount = container.querySelectorAll('div').length + 1;
+    const newKR = document.createElement('div');
+    newKR.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+    newKR.innerHTML = `
+        <span style="color: ${color}; font-weight: 500; font-size: 12px;">KR${krCount}</span>
+        <input type="text" class="p-inputtext" style="flex: 1; font-size: 13px; border: none; padding: 4px; background: #F8F8FA; border-radius: 6px;" placeholder="输入关键结果...">
+        <button class="p-button p-button-text" style="color: #94a3b8; padding: 2px;" onclick="this.parentElement.remove(); updateKRNumbers(this.closest('.okr-key-results'))">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.insertBefore(newKR, btn);
+}
+
+// 辅助函数：更新 KR 编号
+function updateKRNumbers(container) {
+    if (!container) return;
+    container.querySelectorAll('div').forEach((krEl, idx) => {
+        const krNum = krEl.querySelector('span');
+        if (krNum) krNum.textContent = `KR${idx + 1}`;
+    });
+}
+
+// 删除 KR 项并更新编号
+function removeKRItem(btn) {
+    const container = btn.closest('.okr-key-results');
+    btn.parentElement.remove();
+    updateKRNumbers(container);
+}
+
+// 刷新个人业绩看板数据
+function refreshPerformanceData() {
+    // 模拟数据刷新动画
+    const score = document.getElementById('perf-total-score');
+    if (score) {
+        score.style.opacity = '0.5';
+        setTimeout(() => {
+            score.style.opacity = '1';
+        }, 200);
+    }
+}
+
+// 保存价值指标配置
+function getValueMetricsConfig() {
+    const mode = document.getElementById('value-mode-kpi')?.style.background === 'transparent' ? 'okr' : 'kpi';
+    
+    // KPI Data
+    const kpiItems = [];
+    document.querySelectorAll('#value-kpi-panel > div:first-child > div').forEach(card => {
+        const titleInput = card.querySelector('input[type="text"]:first-of-type');
+        const descInput = card.querySelector('input[type="text"]:nth-of-type(2)');
+        const weightInput = card.querySelector('input[type="number"]');
+        const metrics = [];
+        card.querySelectorAll('div[style*="flex-wrap: wrap"] > div').forEach(metricEl => {
+            const mInput = metricEl.querySelector('input');
+            if (mInput) metrics.push(mInput.value);
+        });
+        
+        if (titleInput) {
+            kpiItems.push({
+                title: titleInput.value,
+                desc: descInput ? descInput.value : '',
+                weight: parseInt(weightInput ? weightInput.value : 0),
+                metrics: metrics
+            });
+        }
+    });
+
+    // OKR Data
+    const okrObjectives = [];
+    document.querySelectorAll('.okr-objective-card').forEach((card, idx) => {
+        const titleInput = card.querySelector('input[type="text"]');
+        const krs = [];
+        card.querySelectorAll('.okr-key-results div').forEach(krEl => {
+            const krInput = krEl.querySelector('input');
+            if (krInput) krs.push(krInput.value);
+        });
+        if (titleInput) {
+            okrObjectives.push({
+                title: titleInput.value,
+                krs: krs
+            });
+        }
+    });
+
+    return {
+        mode: mode,
+        kpiItems: kpiItems,
+        okrObjectives: okrObjectives,
+        transferTrigger: document.getElementById('emp-transfer-trigger')?.value || '2_times',
+        transferAttribution: document.getElementById('emp-transfer-attribution')?.value || 'contribution_prop'
+    };
+}
+
+// 加载价值指标配置
+function loadValueMetricsConfig(config) {
+    if (!config) return;
+    
+    // 切换模式
+    switchValueMode(config.mode || 'kpi');
+
+    // 加载 KPI
+    if (config.kpiItems) {
+        // Here we could re-render the whole KPI panel if we wanted it to be truly dynamic,
+        // but for now we'll just map them back to the 3 static cards we have.
+        const kpiPanels = document.querySelectorAll('#value-kpi-panel > div:first-child > div');
+        config.kpiItems.forEach((item, idx) => {
+            if (kpiPanels[idx]) {
+                const titleInput = kpiPanels[idx].querySelector('input[type="text"]:first-of-type');
+                const descInput = kpiPanels[idx].querySelector('input[type="text"]:nth-of-type(2)');
+                const weightInput = kpiPanels[idx].querySelector('input[type="number"]');
+                if (titleInput) titleInput.value = item.title;
+                if (descInput) descInput.value = item.desc;
+                if (weightInput) weightInput.value = item.weight;
+                
+                // Metrics
+                const metricsContainer = kpiPanels[idx].querySelector('div[style*="flex-wrap: wrap"]');
+                if (metricsContainer) {
+                    // Clear existing metrics (except the "Add" button)
+                    const addButton = metricsContainer.querySelector('button');
+                    metricsContainer.querySelectorAll('div').forEach(d => d.remove());
+                    item.metrics.forEach(m => {
+                        const bgColor = idx === 0 ? '#E5EAFE' : (idx === 1 ? '#E6F7ED' : '#FFF9E6');
+                        const textColor = idx === 0 ? '#007AFF' : (idx === 1 ? '#22c55e' : '#f59e0b');
+                        const newMetric = document.createElement('div');
+                        newMetric.style.cssText = `display: flex; align-items: center; background: ${bgColor}; border-radius: 6px; padding: 4px 12px; gap: 4px;`;
+                        newMetric.innerHTML = `
+                            <input type="text" value="${m}" style="font-size: 11px; color: ${textColor}; border: none; background: transparent; width: ${m.length * 10}px; min-width: 40px; text-align: center; padding: 0;">
+                            <i class="fas fa-times" style="font-size: 9px; color: ${textColor}; cursor: pointer;" onclick="this.parentElement.remove()"></i>
+                        `;
+                        metricsContainer.insertBefore(newMetric, addButton);
+                    });
+                }
+            }
+        });
+    }
+
+    // 加载 OKR
+    const okrList = document.getElementById('okr-objectives-list');
+    if (okrList && config.okrObjectives) {
+        okrList.innerHTML = '';
+        okrObjectiveCount = 0;
+        config.okrObjectives.forEach((obj, idx) => {
+            okrObjectiveCount++;
+            const colors = ['#ff3b30', '#007AFF', '#34C759', '#FF9500'];
+            const color = colors[(okrObjectiveCount - 1) % colors.length];
+            
+            const newCard = document.createElement('div');
+            newCard.className = 'okr-objective-card';
+            newCard.style.cssText = 'background: #fff; border: 1px solid #F2F2F7; border-radius: 16px; padding: 20px;';
+            let krHtml = obj.krs.map((kr, kIdx) => `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: ${color}; font-weight: 500; font-size: 12px;">KR${kIdx + 1}</span>
+                    <input type="text" class="p-inputtext" style="flex: 1; font-size: 13px; border: none; padding: 4px; background: #F8F8FA; border-radius: 6px;" value="${kr}">
+                    <button class="p-button p-button-text" style="color: #94a3b8; padding: 2px;" onclick="this.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+            
+            newCard.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                    <div style="width: 28px; height: 28px; background: #F2F2F7; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: #1d1d1f;">O${okrObjectiveCount}</div>
+                    <input type="text" class="p-inputtext" value="${obj.title}" style="flex: 1; font-weight: 600; font-size: 15px; border: none; padding: 4px; background: transparent;">
+                    <button class="p-button p-button-text" style="color: #ff3b30; padding: 4px;" onclick="this.closest('.okr-objective-card').remove()">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+                <div class="okr-key-results" style="padding-left: 40px; display: flex; flex-direction: column; gap: 10px;">
+                    ${krHtml}
+                    <button class="p-button p-button-text p-button-sm" onclick="addKRToObjective(this, '${color}')" style="align-self: flex-start; font-size: 11px; padding: 4px;">
+                        <i class="fas fa-plus"></i> 添加 KR
+                    </button>
+                </div>
+            `;
+            okrList.appendChild(newCard);
+        });
+    }
+
+    // 转接规则
+    if (config.transferTrigger) {
+        const el = document.getElementById('emp-transfer-trigger');
+        if (el) el.value = config.transferTrigger;
+    }
+    if (config.transferAttribution) {
+        const el = document.getElementById('emp-transfer-attribution');
+        if (el) el.value = config.transferAttribution;
+    }
+
+    updateKPIWeightTotal();
+}
+
+// 打开个人业绩看板
+function openPerformanceDashboard(empId) {
+    const emp = employees.find(e => e.id === empId);
+    if (!emp) return;
+
+    const modal = document.getElementById('employee-performance-modal');
+    if (!modal) return;
+
+    // 填充基本信息
+    document.getElementById('perf-nickname').textContent = emp.nickname + ' 业绩';
+    document.getElementById('perf-position').textContent = emp.position || 'AI 员工';
+    
+    // 随机一个分数（模拟）
+    const score = 80 + Math.floor(Math.random() * 15) + (Math.random() * 0.9);
+    document.getElementById('perf-total-score').textContent = score.toFixed(1);
+    
+    modal.classList.add('active');
+}
+
+// 打开管理者看板
+function openManagerDashboard() {
+    const modal = document.getElementById('manager-dashboard-modal');
+    if (modal) {
+        modal.classList.add('active');
+        // 模拟加载最新统计数据
+        console.log('[管理者看板] 已从分身价值映射引擎同步最新 KPI/OKR 达成数据');
+    }
+}
+
+// 价值核算配置跳转逻辑
+function openValueSettings() {
+    closeDrawer('manager-dashboard-modal');
+    // 默认打开第一个员工的配置界面，并定位到“价值目标”页签
+    if (employees.length > 0) {
+        openEmployeeBuilder(employees[0].id);
+        setTimeout(() => switchEmployeeTab('value'), 100);
+        showToast('已进入价值核算配置模式', 'info');
+    }
 }
 
 function getChatAgents() {
